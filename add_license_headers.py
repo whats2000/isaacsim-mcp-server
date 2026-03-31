@@ -1,60 +1,65 @@
 #!/usr/bin/env python3
-"""
-MIT License
-
-Copyright (c) 2023-2025 omni-mcp
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-"""
+# MIT License
+#
+# Copyright (c) 2023-2025 omni-mcp
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
 
 # Description: Script to add license headers to all Python files in the project.
 
 import os
-import sys
 import re
+import sys
 
 # The license header text
-LICENSE_HEADER = '''"""
-MIT License
+LICENSE_HEADER = """# MIT License
+#
+# Copyright (c) 2023-2025 omni-mcp
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
 
-Copyright (c) 2023-2025 omni-mcp
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
 """
 
-'''
+LICENSE_DOCSTRING_HEADER_RE = re.compile(
+    r'^(?P<prefix>#![^\n]*\n\n?)?"""'
+    r'\nMIT License\n'
+    r'.*?'
+    r'\nSOFTWARE\.\n'
+    r'"""\n\n?',
+    re.DOTALL,
+)
 
 # Directories to skip
 SKIP_DIRS = ['.git', '.vscode', '__pycache__', 'venv', 'env', '.env', 'build', 'dist']
@@ -63,15 +68,35 @@ SKIP_DIRS = ['.git', '.vscode', '__pycache__', 'venv', 'env', '.env', 'build', '
 def has_license(content):
     return 'MIT License' in content[:500] and 'Copyright' in content[:500]
 
+
+def normalize_existing_header(content):
+    match = LICENSE_DOCSTRING_HEADER_RE.match(content)
+    if not match:
+        return content
+
+    prefix = match.group("prefix") or ""
+    rest = content[match.end():]
+    if prefix:
+        return prefix + LICENSE_HEADER + rest
+    return LICENSE_HEADER + rest
+
+
 def process_file(file_path):
     with open(file_path, 'r', encoding='utf-8') as f:
         content = f.read()
-    
+
+    normalized_content = normalize_existing_header(content)
+    if normalized_content != content:
+        with open(file_path, 'w', encoding='utf-8') as f:
+            f.write(normalized_content)
+        print(f"Normalized license header in {file_path}")
+        return True
+
     # Skip if file already has a license header
     if has_license(content):
         print(f"Skipping {file_path} - already has license header")
         return False
-    
+
     # Handle shebang line if present
     if content.startswith('#!'):
         shebang_end = content.find('\n') + 1
