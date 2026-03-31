@@ -1,7 +1,15 @@
 """MCP tool modules for Isaac Sim."""
 
+from __future__ import annotations
 
-def register_all_tools(mcp, get_connection):
+from typing import TYPE_CHECKING, Callable
+
+if TYPE_CHECKING:
+    from mcp.server.fastmcp import FastMCP
+    from isaac_mcp.connection import IsaacConnection
+
+
+def register_all_tools(mcp: FastMCP, get_connection: Callable[[], IsaacConnection]) -> None:
     """Register all MCP tools from submodules.
 
     Args:

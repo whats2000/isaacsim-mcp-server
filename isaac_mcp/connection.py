@@ -1,5 +1,7 @@
 """Socket connection to the Isaac Sim extension server."""
 
+from __future__ import annotations
+
 import socket
 import json
 import logging
@@ -30,7 +32,7 @@ class IsaacConnection:
             self.sock = None
             return False
 
-    def disconnect(self):
+    def disconnect(self) -> None:
         if self.sock:
             try:
                 self.sock.close()
@@ -39,7 +41,7 @@ class IsaacConnection:
             finally:
                 self.sock = None
 
-    def receive_full_response(self, sock, buffer_size=16384):
+    def receive_full_response(self, sock: socket.socket, buffer_size: int = 16384) -> bytes:
         chunks = []
         sock.settimeout(300.0)
         try:
@@ -116,7 +118,7 @@ def get_isaac_connection() -> IsaacConnection:
     return _isaac_connection
 
 
-def reset_isaac_connection():
+def reset_isaac_connection() -> None:
     """Disconnect and clear the global connection (used during shutdown)."""
     global _isaac_connection
     if _isaac_connection:
