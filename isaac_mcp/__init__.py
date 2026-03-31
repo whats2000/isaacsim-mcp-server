@@ -27,13 +27,4 @@ allowing AI assistants to control Isaac Sim through a WebSocket server.
 """
 
 __version__ = "0.1.0"
-
-
-
-# The mcp_server module can be imported directly without Isaac Sim dependencies
-# For the direct connection mode
-try:
-    from . import server
-    __all__.append("server")
-except (ImportError, ModuleNotFoundError):
-    pass
+__all__ = ["__version__"]

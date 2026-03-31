@@ -60,49 +60,13 @@ git clone https://github.com/omni-mcp/isaac-sim-mcp
 cd ~/Documents/GitHub/isaac-sim-mcp
 ```
 
-### 2. Install MCP prerequisites
-
-This project needs Python `3.10+`. From the repo root, detect your current checkout path once and reuse it in the next steps:
+### 2. Set up Python once
 
 ```bash
-export ISAAC_SIM_MCP_ROOT="$(pwd)"
-test -f "$ISAAC_SIM_MCP_ROOT/isaac.sim.mcp_extension/config/extension.toml"
-```
-
-If that `test` command prints nothing and exits successfully, you are in the right folder.
-
-If `python` or `python3` on your machine points to an older Conda environment, tell `uv` which interpreter to use explicitly.
-
-```bash
-uv venv --python /usr/bin/python3.10
-source .venv/bin/activate
-uv pip install "mcp[cli]"
-```
-
-If you prefer not to activate the environment, you can also run:
-
-```bash
-uv venv --python /usr/bin/python3.10
-uv pip install --python .venv/bin/python "mcp[cli]"
-```
-
-If you do not have Python `3.10+` installed system-wide, you can ask `uv` to download one:
-
-```bash
-uv python install 3.11
-uv venv --python 3.11
-source .venv/bin/activate
-uv pip install "mcp[cli]"
+./scripts/setup_python_env.sh
 ```
 
 ### 3. Launch Isaac Sim with the extension enabled
-
-Isaac Sim should load this repository as an extension folder.
-
-- Extension folder: the repository root that contains `isaac.sim.mcp_extension/`
-- Recommended shell variable: `$ISAAC_SIM_MCP_ROOT`
-- Extension id: `isaac.sim.mcp_extension`
-- Default socket endpoint: `localhost:8766`
 
 Optional environment variables for Beaver3D and NVIDIA-backed asset workflows:
 
@@ -112,19 +76,8 @@ export ARK_API_KEY="<your beaver3d api key>"
 export NVIDIA_API_KEY="<your nvidia api key>"
 ```
 
-Start Isaac Sim:
-
 ```bash
-cd ~/isaacsim
-./isaac-sim.sh \
-  --ext-folder "$ISAAC_SIM_MCP_ROOT" \
-  --enable isaac.sim.mcp_extension
-```
-
-If you use a local Isaac asset root, you can also pass:
-
-```bash
---/persistent/isaac/asset_root/default="<your asset root>"
+./scripts/run_isaac_sim.sh
 ```
 
 Expected startup logs should include lines similar to:
@@ -138,8 +91,10 @@ Isaac Sim MCP server started on localhost:8766
 
 ### 4. Run the MCP server
 
+This script is the command your MCP client should launch:
+
 ```bash
-python isaac_mcp/server.py
+./scripts/run_mcp_server.sh
 ```
 
 ### 5. Add the MCP server to Cursor
@@ -150,27 +105,47 @@ Open Cursor settings and add:
 {
   "mcpServers": {
     "isaac-sim": {
-      "command": "/absolute/path/to/isaac-sim-mcp/.venv/bin/python",
-      "args": [
-        "/absolute/path/to/isaac-sim-mcp/isaac_mcp/server.py"
-      ]
+      "command": "/absolute/path/to/isaac-sim-mcp/scripts/run_mcp_server.sh"
     }
   }
 }
 ```
 
-You can fill in those absolute paths from your shell with:
+## Setup Notes
+
+These are the simple scripts used above:
 
 ```bash
-printf '%s\n' "$ISAAC_SIM_MCP_ROOT/.venv/bin/python"
-printf '%s\n' "$ISAAC_SIM_MCP_ROOT/isaac_mcp/server.py"
+./scripts/setup_python_env.sh
+./scripts/run_isaac_sim.sh
+./scripts/run_mcp_server.sh
 ```
 
-If Isaac Sim says `Can't find extension with name: isaac.sim.mcp_extension`, verify the folder directly:
+By default:
+- `setup_python_env.sh` uses `/usr/bin/python3.10`
+- `run_isaac_sim.sh` uses `$HOME/isaacsim/isaac-sim.sh`
+- `run_mcp_server.sh` uses `.venv/bin/python`
+
+You can override them when needed:
 
 ```bash
-test -f "$ISAAC_SIM_MCP_ROOT/isaac.sim.mcp_extension/config/extension.toml" && echo OK
+PYTHON_SPEC=3.11 ./scripts/setup_python_env.sh
+ISAACSIM_ROOT=/path/to/isaacsim ./scripts/run_isaac_sim.sh
 ```
+
+If Isaac Sim says `Can't find extension with name: isaac.sim.mcp_extension`, verify you are in the repo root and the manifest exists:
+
+```bash
+pwd
+test -f ./isaac.sim.mcp_extension/config/extension.toml && echo OK
+```
+
+Verified on this repo:
+- `./scripts/run_isaac_sim.sh` works
+- `./scripts/run_mcp_server.sh` resolves the correct local `.venv`
+- `--ext-folder <repo-root>` with `--enable isaac.sim.mcp_extension` works
+- `--ext-folder <repo-root>/isaac.sim.mcp_extension` does not work
+- `--enable isaac_sim_mcp_extension` does not work
 
 ## Recommended Workflow
 
@@ -298,7 +273,7 @@ The MCP server currently exposes `35` tools across `8` categories.
 Run the MCP inspector during development:
 
 ```bash
-uv run mcp dev "$ISAAC_SIM_MCP_ROOT/isaac_mcp/server.py"
+./.venv/bin/python -m mcp dev ./isaac_mcp/server.py
 ```
 
 The inspector is typically available at `http://localhost:5173`.
