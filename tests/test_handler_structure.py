@@ -34,7 +34,7 @@ def test_adapter_base_has_all_abstract_methods():
         "create_camera", "capture_camera_image", "create_lidar", "get_lidar_point_cloud",
         "create_pbr_material", "create_physics_material", "apply_material",
         "create_light", "modify_light",
-        "import_urdf",
+        "clone_prim", "import_urdf",
         "play", "pause", "stop", "step", "execute_script",
     }
     assert methods == expected, f"Missing: {expected - methods}, Extra: {methods - expected}"

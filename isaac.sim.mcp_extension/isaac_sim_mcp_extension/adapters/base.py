@@ -188,6 +188,11 @@ class IsaacAdapterBase(ABC):
         """Modify properties of an existing light."""
         ...
 
+    @abstractmethod
+    def clone_prim(self, source_path: str, target_path: str) -> None:
+        """Copy a prim from source_path to target_path."""
+        ...
+
     # ── Assets ─────────────────────────────────────────────
 
     @abstractmethod

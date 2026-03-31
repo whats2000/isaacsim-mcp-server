@@ -36,9 +36,8 @@ def create_physics(adapter: IsaacAdapterBase, gravity: Optional[Sequence[float]]
     try:
         scene_path = adapter.create_physics_scene(gravity=gravity, scene_name=scene_name)
         # Create ground plane
-        import omni.kit.commands
         floor_path = "/World/groundPlane"
-        omni.kit.commands.execute("CreatePrim", prim_path=floor_path, prim_type="Plane")
+        adapter.create_prim(floor_path, "Plane")
         return {"status": "success", "message": f"Physics scene created at {scene_path}"}
     except Exception as e:
         return {"status": "error", "message": str(e)}

@@ -51,8 +51,7 @@ def clone(adapter: IsaacAdapterBase, source_path: Optional[str] = None, target_p
     try:
         if not source_path or not target_path:
             return {"status": "error", "message": "source_path and target_path are required"}
-        import omni.kit.commands
-        omni.kit.commands.execute("CopyPrim", path_from=source_path, path_to=target_path)
+        adapter.clone_prim(source_path, target_path)
         if position:
             adapter.set_prim_transform(target_path, position=position)
         return {"status": "success", "message": f"Cloned {source_path} to {target_path}"}

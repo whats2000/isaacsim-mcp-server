@@ -1,11 +1,14 @@
 """Asset import and loading MCP tools."""
 
 import json
-from typing import List, Optional
+from typing import Callable, List, Optional, TYPE_CHECKING
 from mcp.server.fastmcp import FastMCP
 
+if TYPE_CHECKING:
+    from isaac_mcp.connection import IsaacConnection
 
-def register_tools(mcp: FastMCP, get_connection):
+
+def register_tools(mcp: FastMCP, get_connection: "Callable[[], IsaacConnection]") -> None:
 
     @mcp.tool("import_urdf")
     def import_urdf(urdf_path: str, prim_path: str = "/World/robot", position: Optional[List[float]] = None) -> str:

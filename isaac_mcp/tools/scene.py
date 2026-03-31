@@ -1,11 +1,14 @@
 """Scene management MCP tools."""
 
 import json
-from typing import Dict, Any, List, Optional
+from typing import Callable, Dict, Any, List, Optional, TYPE_CHECKING
 from mcp.server.fastmcp import FastMCP
 
+if TYPE_CHECKING:
+    from isaac_mcp.connection import IsaacConnection
 
-def register_tools(mcp: FastMCP, get_connection):
+
+def register_tools(mcp: FastMCP, get_connection: "Callable[[], IsaacConnection]") -> None:
 
     @mcp.tool("get_scene_info")
     def get_scene_info() -> str:

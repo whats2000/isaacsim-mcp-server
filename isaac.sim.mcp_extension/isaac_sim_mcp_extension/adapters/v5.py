@@ -271,6 +271,10 @@ class IsaacAdapterV5(IsaacAdapterBase):
 
     # ── Assets ─────────────────────────────────────────────
 
+    def clone_prim(self, source_path: str, target_path: str) -> None:
+        import omni.kit.commands
+        omni.kit.commands.execute("CopyPrim", path_from=source_path, path_to=target_path)
+
     def import_urdf(self, urdf_path: str, prim_path: str = "/World/robot", **kwargs) -> Any:
         import omni.kit.commands
         status, import_config = omni.kit.commands.execute("URDFCreateImportConfig")
