@@ -5,6 +5,18 @@ All notable changes to the isaac-sim-mcp project will be documented in this file
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+- Refreshed project documentation to reflect the current Isaac Sim `5.1.0`-focused architecture
+- Reworked the README with a clearer quickstart, architecture overview, and example prompting workflow
+- Updated documentation to match the modular MCP server and extension layout used by the current codebase
+
+### Documented
+- `35` MCP tools across `8` categories
+- Adapter-based version isolation for Isaac Sim `5.1.0`
+- Environment discovery, robot library refresh, and newer simulation control workflows
+
 
 ## [0.3.0] - 2024-04-22
 
