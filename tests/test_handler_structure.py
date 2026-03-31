@@ -25,7 +25,7 @@ def test_adapter_base_has_all_abstract_methods():
                 elif isinstance(decorator, ast.Attribute) and decorator.attr == "abstractmethod":
                     methods.add(node.name)
     expected = {
-        "get_stage", "get_assets_root_path",
+        "get_stage", "get_assets_root_path", "discover_environments", "load_environment",
         "create_prim", "delete_prim", "add_reference_to_stage",
         "set_prim_transform", "get_prim_transform", "list_prims", "get_prim_info",
         "create_xform_prim", "create_articulation",

@@ -29,6 +29,16 @@ class IsaacAdapterBase(ABC):
         """Return the root path for Isaac Sim built-in assets."""
         ...
 
+    @abstractmethod
+    def discover_environments(self) -> Dict[str, Dict[str, str]]:
+        """Scan the asset server for available environment USD files."""
+        ...
+
+    @abstractmethod
+    def load_environment(self, env_path: str, prim_path: str = "/Environment") -> None:
+        """Load an environment USD into the stage."""
+        ...
+
     # ── Prims ──────────────────────────────────────────────
 
     @abstractmethod

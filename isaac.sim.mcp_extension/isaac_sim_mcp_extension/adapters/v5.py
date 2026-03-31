@@ -36,6 +36,56 @@ class IsaacAdapterV5(IsaacAdapterBase):
         omni.kit.commands.execute("DeletePrims", paths=[prim_path])
         return True
 
+    def discover_environments(self) -> Dict[str, Dict[str, str]]:
+        """Scan the Isaac Sim asset server for available environment USD files."""
+        import omni.client
+        from isaacsim.storage.native import get_assets_root_path
+
+        root = get_assets_root_path()
+        discovered: Dict[str, Dict[str, str]] = {}
+
+        search_bases = ["/Isaac/Environments/", "/NVIDIA/Assets/Scenes/Templates/"]
+        for base in search_bases:
+            result, entries = omni.client.list(root + base)
+            if result != omni.client.Result.OK:
+                continue
+            for entry in entries:
+                name = entry.relative_path.rstrip("/")
+                dir_path = root + base + name + "/"
+                r2, files = omni.client.list(dir_path)
+                if r2 != omni.client.Result.OK:
+                    continue
+                # Find USD files at this level
+                for f in files:
+                    if f.relative_path.endswith(".usd") or f.relative_path.endswith(".usda"):
+                        key = name.lower().replace(" ", "_")
+                        if key not in discovered:
+                            discovered[key] = {
+                                "asset_path": base + name + "/" + f.relative_path,
+                                "description": name.replace("_", " "),
+                            }
+                        break
+                # Also check one level deeper for nested envs
+                for f in files:
+                    subname = f.relative_path.rstrip("/")
+                    r3, subfiles = omni.client.list(dir_path + subname + "/")
+                    if r3 != omni.client.Result.OK:
+                        continue
+                    for sf in subfiles:
+                        if sf.relative_path.endswith(".usd") or sf.relative_path.endswith(".usda"):
+                            key = f"{name}_{subname}".lower().replace(" ", "_")
+                            if key not in discovered:
+                                discovered[key] = {
+                                    "asset_path": base + name + "/" + subname + "/" + sf.relative_path,
+                                    "description": f"{name} {subname}".replace("_", " "),
+                                }
+                            break
+        return discovered
+
+    def load_environment(self, env_path: str, prim_path: str = "/Environment") -> None:
+        from isaacsim.core.utils.stage import add_reference_to_stage
+        add_reference_to_stage(env_path, prim_path)
+
     def add_reference_to_stage(self, usd_path: str, prim_path: str) -> Usd.Prim:
         from isaacsim.core.utils.stage import add_reference_to_stage
         return add_reference_to_stage(usd_path, prim_path)

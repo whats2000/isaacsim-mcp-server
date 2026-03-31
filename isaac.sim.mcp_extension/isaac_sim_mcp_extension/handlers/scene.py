@@ -7,12 +7,17 @@ from typing import Any, Dict, Optional, Sequence
 from ..adapters.base import IsaacAdapterBase
 
 
+_discovered_envs: Optional[Dict[str, Dict[str, str]]] = None
+
+
 def register(registry: Dict[str, Any], adapter: IsaacAdapterBase) -> None:
     registry["scene.get_info"] = lambda **p: get_info(adapter, **p)
     registry["scene.create_physics"] = lambda **p: create_physics(adapter, **p)
     registry["scene.clear"] = lambda **p: clear(adapter, **p)
     registry["scene.list_prims"] = lambda **p: list_prims(adapter, **p)
     registry["scene.get_prim_info"] = lambda **p: get_prim_info(adapter, **p)
+    registry["scene.list_environments"] = lambda **p: list_environments(adapter, **p)
+    registry["scene.load_environment"] = lambda **p: load_environment(adapter, **p)
 
 
 def get_info(adapter: IsaacAdapterBase) -> Dict[str, Any]:
@@ -75,5 +80,56 @@ def get_prim_info(adapter: IsaacAdapterBase, prim_path: str = "/") -> Dict[str, 
     try:
         info = adapter.get_prim_info(prim_path)
         return {"status": "success", **info}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+def _get_env_library(adapter: IsaacAdapterBase) -> Dict[str, Dict[str, str]]:
+    global _discovered_envs
+    if _discovered_envs is not None:
+        return _discovered_envs
+    try:
+        envs = adapter.discover_environments()
+        if envs:
+            _discovered_envs = envs
+            print(f"Discovered {len(envs)} environments from asset server")
+            return _discovered_envs
+    except Exception as e:
+        print(f"Environment discovery failed: {e}")
+    _discovered_envs = {}
+    return _discovered_envs
+
+
+def list_environments(adapter: IsaacAdapterBase) -> Dict[str, Any]:
+    library = _get_env_library(adapter)
+    return {"status": "success", "environment_count": len(library), "environments": library}
+
+
+def load_environment(adapter: IsaacAdapterBase, environment: Optional[str] = None, prim_path: str = "/Environment") -> Dict[str, Any]:
+    try:
+        if not environment:
+            return {"status": "error", "message": "environment is required. Use scene.list_environments to see options."}
+
+        library = _get_env_library(adapter)
+        q = environment.lower().strip()
+
+        # Exact match
+        match = library.get(q)
+
+        # Fuzzy match
+        if not match:
+            for key, info in library.items():
+                if q in key or q in info.get("description", "").lower():
+                    match = info
+                    break
+
+        if not match:
+            available = list(library.keys())[:15]
+            return {"status": "error", "message": f"Environment '{environment}' not found. Options: {available}"}
+
+        assets_root = adapter.get_assets_root_path()
+        full_path = assets_root + match["asset_path"]
+        adapter.load_environment(full_path, prim_path)
+        return {"status": "success", "message": f"Loaded environment: {match['description']}", "prim_path": prim_path}
     except Exception as e:
         return {"status": "error", "message": str(e)}

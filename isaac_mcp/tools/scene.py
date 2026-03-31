@@ -83,3 +83,30 @@ def register_tools(mcp: FastMCP, get_connection: "Callable[[], IsaacConnection]"
             return json.dumps(result, indent=2)
         except Exception as e:
             return json.dumps({"status": "error", "message": str(e)})
+
+    @mcp.tool("list_environments")
+    def list_environments() -> str:
+        """List all available environments discovered from the Isaac Sim asset server.
+        Includes warehouses, offices, outdoor scenes, and more."""
+        try:
+            conn = get_connection()
+            result = conn.send_command("scene.list_environments")
+            return json.dumps(result, indent=2)
+        except Exception as e:
+            return json.dumps({"status": "error", "message": str(e)})
+
+    @mcp.tool("load_environment")
+    def load_environment(environment: str, prim_path: str = "/Environment") -> str:
+        """Load a pre-built environment into the scene. Supports fuzzy matching.
+        Call list_environments first to see available options.
+
+        Args:
+            environment: Environment name or search term (e.g. "warehouse", "hospital", "office").
+            prim_path: Prim path for the loaded environment.
+        """
+        try:
+            conn = get_connection()
+            result = conn.send_command("scene.load_environment", {"environment": environment, "prim_path": prim_path})
+            return json.dumps(result, indent=2)
+        except Exception as e:
+            return json.dumps({"status": "error", "message": str(e)})
