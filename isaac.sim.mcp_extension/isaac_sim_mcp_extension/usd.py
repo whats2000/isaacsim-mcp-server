@@ -28,7 +28,7 @@ import omni.usd
 import omni
 from pathlib import Path
 from pxr import UsdShade, Sdf, UsdGeom, Gf
-from omni.isaac.core.utils.stage import add_reference_to_stage
+from isaacsim.core.utils.stage import add_reference_to_stage
 import json
 import requests
 

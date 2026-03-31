@@ -12,8 +12,8 @@ The MCP Server and its extension leverage the Model Context Protocol (MCP) frame
 
 ## Requirements
 
-- NVIDIA Isaac Sim 4.2.0 or higher
-- Python 3.9+
+- NVIDIA Isaac Sim 5.1.0 or higher
+- Python 3.11+
 - Cursor AI editor for MCP integration
 
 ## **Mandatory** Pre-requisite
@@ -38,22 +38,21 @@ Isaac Sim extension folder should point to your project folder:
 # Enable extension in Isaac Simulation
 # cd to your Isaac Sim installation directory
 # You can change assets root to local with --/persistent/isaac/asset_root/default="<your asset location>"
-# By default it is an AWS bucket, e.g. --/persistent/isaac/asset_root/default="/share/Assets/Isaac/4.2"
+# By default it is an AWS bucket, e.g. --/persistent/isaac/asset_root/default="/share/Assets/Isaac/5.1"
 # Setup API KEY for Beaver3d and NVIDIA
 export BEAVER3D_MODEL=<your beaver3d model name>
-export export ARK_API_KEY=<Your Bearver3D API Key>
+export ARK_API_KEY=<Your Bearver3D API Key>
 export NVIDIA_API_KEY="<your nvidia api key  and apply it from https://ngc.nvidia.com/signout>"
 
-cd ~/.local/share/ov/pkg/isaac-sim-4.2.0
-./isaac-sim.sh --ext-folder /home/ubuntu/Documents/isaac-sim-mcp/ --enable isaac.sim.mcp_extension 
+cd ~/isaacsim
+./isaac-sim.sh --ext-folder ~/Documents/isaac-sim-mcp/ --enable isaac.sim.mcp_extension 
 ```
 
 Verify the extension starts successfully. The output should look like:
 
 ```
-[7.160s] [ext: isaac.sim.mcp_extension-0.1.0] startup
-trigger  on_startup for:  isaac.sim.mcp_extension-0.1.0
-settings:  {'envPath': '/home/ubuntu/.local/share/ov/data/Kit/Isaac-Sim/4.2/pip3-envs/default', 'archiveDirs': {}, 'installCheckIgnoreVersion': False, 'allowOnlineIndex': True, 'tryUpgradePipOnFirstUse': False}
+[ext: isaac.sim.mcp_extension-0.3.0] startup
+trigger  on_startup for:  isaac.sim.mcp_extension-0.3.0
 Server thread startedIsaac Sim MCP server started on localhost:8766
 ```
 
@@ -66,7 +65,7 @@ The extension should be listening at **localhost:8766** by default.
 1. Go to terminal and run, make sure mcp server could start sucessfully at terminal with base venv.
    ```
    uv pip install "mcp[cli]"
-   uv run /home/ubuntu/Documents/isaac-sim-mcp/isaac_mcp/server.py
+   uv run ~/Documents/isaac-sim-mcp/isaac_mcp/server.py
    ```
 2. Start Cursor and open the folder `~/Documents/isaac-sim-mcp`
 3. Go to Cursor preferences, choose MCP and add a global MCP server:
@@ -75,7 +74,7 @@ The extension should be listening at **localhost:8766** by default.
 {
     "mcpServers": {
         "isaac-sim": {
-            "command": "uv run /home/ubuntu/Documents/isaac-sim-mcp/isaac_mcp/server.py"
+            "command": "uv run ~/Documents/isaac-sim-mcp/isaac_mcp/server.py"
         }
     }
 }

@@ -389,10 +389,10 @@ def execute_script(ctx: Context, code: str) -> str:
     
     For physics simulation, avoid using simulation_context to run simulations in the main thread as this can cause blocking. Instead, use the World class with async methods for initializing physics and running simulations. For example, use my_world = World(physics_dt=1.0/60.0) and my_world.step_async() in a loop, which allows for better performance and responsiveness. If you need to wait for physics to stabilize, consider using my_world.play() followed by multiple step_async() calls.
     To create an simulation of Franka robot, the code should be like this:
-from omni.isaac.core import SimulationContext
-from omni.isaac.core.utils.prims import create_prim
-from omni.isaac.core.utils.stage import add_reference_to_stage, is_stage_loading
-from omni.isaac.nucleus import get_assets_root_path
+from isaacsim.core.api import SimulationContext
+from isaacsim.core.utils.prims import create_prim
+from isaacsim.core.utils.stage import add_reference_to_stage, is_stage_loading
+from isaacsim.storage.native import get_assets_root_path
 
 assets_root_path = get_assets_root_path()
 asset_path = assets_root_path + "/Isaac/Robots/Franka/franka_alt_fingers.usd"
@@ -405,10 +405,10 @@ add_reference_to_stage(asset_path, "/Franka")
 
     To control the Franka robot, the code should be like this:
 
-from omni.isaac.core import SimulationContext
-from omni.isaac.core.articulations import Articulation
-from omni.isaac.core.utils.stage import add_reference_to_stage
-from omni.isaac.nucleus import get_assets_root_path
+from isaacsim.core.api import SimulationContext
+from isaacsim.core.prims import SingleArticulation as Articulation
+from isaacsim.core.utils.stage import add_reference_to_stage
+from isaacsim.storage.native import get_assets_root_path
 
 my_world = World(stage_units_in_meters=1.0)
 
@@ -461,10 +461,10 @@ def asset_creation_strategy() -> str:
     2. if execute script due to communication error, then retry 3 times at most
 
     3. For Franka robot simulation, the code should be like this:
-from omni.isaac.core import SimulationContext
-from omni.isaac.core.utils.prims import create_prim
-from omni.isaac.core.utils.stage import add_reference_to_stage, is_stage_loading
-from omni.isaac.nucleus import get_assets_root_path
+from isaacsim.core.api import SimulationContext
+from isaacsim.core.utils.prims import create_prim
+from isaacsim.core.utils.stage import add_reference_to_stage, is_stage_loading
+from isaacsim.storage.native import get_assets_root_path
 
 assets_root_path = get_assets_root_path()
 asset_path = assets_root_path + "/Isaac/Robots/Franka/franka_alt_fingers.usd"
@@ -484,10 +484,10 @@ simulation_context.stop()
 
     4. For Franka robot control, the code should be like this:
     
-from omni.isaac.core import SimulationContext
-from omni.isaac.core.utils.prims import create_prim
-from omni.isaac.core.utils.stage import add_reference_to_stage, is_stage_loading
-from omni.isaac.nucleus import get_assets_root_path
+from isaacsim.core.api import SimulationContext
+from isaacsim.core.utils.prims import create_prim
+from isaacsim.core.utils.stage import add_reference_to_stage, is_stage_loading
+from isaacsim.storage.native import get_assets_root_path
 from pxr import UsdPhysics
 
 def create_physics_scene(stage, scene_path="/World/PhysicsScene"):
@@ -538,12 +538,12 @@ simulation_context.stop()
     5. For Jetbot simulation, the code should be like this:
 import carb
 import numpy as np
-from omni.isaac.core import World
-from omni.isaac.core import SimulationContext
-from omni.isaac.core.utils.prims import create_prim
-from omni.isaac.nucleus import get_assets_root_path
-from omni.isaac.wheeled_robots.controllers.differential_controller import DifferentialController
-from omni.isaac.wheeled_robots.robots import WheeledRobot
+from isaacsim.core.api import World
+from isaacsim.core.api import SimulationContext
+from isaacsim.core.utils.prims import create_prim
+from isaacsim.storage.native import get_assets_root_path
+from isaacsim.robot.wheeled_robots.controllers.differential_controller import DifferentialController
+from isaacsim.robot.wheeled_robots.robots import WheeledRobot
 
 simulation_context = SimulationContext()
 simulation_context.initialize_physics()

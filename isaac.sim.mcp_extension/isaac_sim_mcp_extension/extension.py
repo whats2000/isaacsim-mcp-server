@@ -43,10 +43,10 @@ import omni.kit.commands
 import omni.physx as _physx
 import omni.timeline
 from typing import Dict, Any, List, Optional, Union
-from omni.isaac.nucleus import get_assets_root_path
-from omni.isaac.core.prims import XFormPrim
+from isaacsim.storage.native import get_assets_root_path
+from isaacsim.core.prims import SingleXFormPrim as XFormPrim
 import numpy as np
-from omni.isaac.core import World
+from isaacsim.core.api import World
 # Import Beaver3d and USDLoader
 from isaac_sim_mcp_extension.gen3d import Beaver3d
 from isaac_sim_mcp_extension.usd import USDLoader
@@ -383,9 +383,9 @@ class MCPExtension(omni.ext.IExt):
         return {"status": "success", "message": "command executed"}
     
     def create_robot(self, robot_type: str = "g1", position: List[float] = [0, 0, 0]):
-        from omni.isaac.core.utils.prims import create_prim
-        from omni.isaac.core.utils.stage import add_reference_to_stage, is_stage_loading
-        from omni.isaac.nucleus import get_assets_root_path
+        from isaacsim.core.utils.prims import create_prim
+        from isaacsim.core.utils.stage import add_reference_to_stage, is_stage_loading
+        from isaacsim.storage.native import get_assets_root_path
         
 
         stage = omni.usd.get_context().get_stage()

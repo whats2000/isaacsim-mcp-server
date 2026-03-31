@@ -24,14 +24,14 @@ SOFTWARE.
 
 import asyncio
 from time import sleep
-from omni.isaac.core import SimulationContext
-from omni.isaac.core.utils.prims import create_prim
-from omni.isaac.core.utils.stage import add_reference_to_stage, is_stage_loading
-from omni.isaac.nucleus import get_assets_root_path
-from omni.isaac.core.prims import XFormPrim
-from omni.isaac.core.articulations import Articulation
+from isaacsim.core.api import SimulationContext
+from isaacsim.core.utils.prims import create_prim
+from isaacsim.core.utils.stage import add_reference_to_stage, is_stage_loading
+from isaacsim.storage.native import get_assets_root_path
+from isaacsim.core.prims import SingleXFormPrim as XFormPrim
+from isaacsim.core.prims import SingleArticulation as Articulation
 import numpy as np
-from omni.isaac.core import World
+from isaacsim.core.api import World
 
 
 
