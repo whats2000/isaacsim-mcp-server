@@ -44,7 +44,7 @@ Handlers -> Adapter -> Isaac Sim 5.1.0 APIs
 ## Requirements
 
 - NVIDIA Isaac Sim `5.1.0`
-- Python `3.11+`
+- Python `3.10+`
 - `uv` / `uvx`
 - `mcp[cli]`
 - An MCP-compatible client such as Cursor
@@ -54,14 +54,24 @@ Handlers -> Adapter -> Isaac Sim 5.1.0 APIs
 ### 1. Clone the repo
 
 ```bash
-cd ~/Documents
+mkdir -p ~/Documents/GitHub
+cd ~/Documents/GitHub
 git clone https://github.com/omni-mcp/isaac-sim-mcp
-cd isaac-sim-mcp
+cd ~/Documents/GitHub/isaac-sim-mcp
 ```
 
 ### 2. Install MCP prerequisites
 
-This project needs Python `3.10+`. If `python` or `python3` on your machine points to an older Conda environment, tell `uv` which interpreter to use explicitly.
+This project needs Python `3.10+`. From the repo root, detect your current checkout path once and reuse it in the next steps:
+
+```bash
+export ISAAC_SIM_MCP_ROOT="$(pwd)"
+test -f "$ISAAC_SIM_MCP_ROOT/isaac.sim.mcp_extension/config/extension.toml"
+```
+
+If that `test` command prints nothing and exits successfully, you are in the right folder.
+
+If `python` or `python3` on your machine points to an older Conda environment, tell `uv` which interpreter to use explicitly.
 
 ```bash
 uv venv --python /usr/bin/python3.10
@@ -89,7 +99,8 @@ uv pip install "mcp[cli]"
 
 Isaac Sim should load this repository as an extension folder.
 
-- Extension folder: `~/Documents/isaac-sim-mcp`
+- Extension folder: the repository root that contains `isaac.sim.mcp_extension/`
+- Recommended shell variable: `$ISAAC_SIM_MCP_ROOT`
 - Extension id: `isaac.sim.mcp_extension`
 - Default socket endpoint: `localhost:8766`
 
@@ -106,7 +117,7 @@ Start Isaac Sim:
 ```bash
 cd ~/isaacsim
 ./isaac-sim.sh \
-  --ext-folder ~/Documents/isaac-sim-mcp \
+  --ext-folder "$ISAAC_SIM_MCP_ROOT" \
   --enable isaac.sim.mcp_extension
 ```
 
@@ -139,13 +150,26 @@ Open Cursor settings and add:
 {
   "mcpServers": {
     "isaac-sim": {
-      "command": "/home/<your-user>/Documents/GitHub/isaac-sim-mcp/.venv/bin/python",
+      "command": "/absolute/path/to/isaac-sim-mcp/.venv/bin/python",
       "args": [
-        "/home/<your-user>/Documents/GitHub/isaac-sim-mcp/isaac_mcp/server.py"
+        "/absolute/path/to/isaac-sim-mcp/isaac_mcp/server.py"
       ]
     }
   }
 }
+```
+
+You can fill in those absolute paths from your shell with:
+
+```bash
+printf '%s\n' "$ISAAC_SIM_MCP_ROOT/.venv/bin/python"
+printf '%s\n' "$ISAAC_SIM_MCP_ROOT/isaac_mcp/server.py"
+```
+
+If Isaac Sim says `Can't find extension with name: isaac.sim.mcp_extension`, verify the folder directly:
+
+```bash
+test -f "$ISAAC_SIM_MCP_ROOT/isaac.sim.mcp_extension/config/extension.toml" && echo OK
 ```
 
 ## Recommended Workflow
@@ -274,7 +298,7 @@ The MCP server currently exposes `35` tools across `8` categories.
 Run the MCP inspector during development:
 
 ```bash
-uv run mcp dev ~/Documents/isaac-sim-mcp/isaac_mcp/server.py
+uv run mcp dev "$ISAAC_SIM_MCP_ROOT/isaac_mcp/server.py"
 ```
 
 The inspector is typically available at `http://localhost:5173`.
