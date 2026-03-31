@@ -5,10 +5,13 @@ The MCP Server and its extension leverage the Model Context Protocol (MCP) frame
 ## Features
 
 - Natural language control of Isaac Sim
+- Modular tool architecture with 31 specialized tools across 8 categories
 - Dynamic robot positioning and movement
 - Custom lighting and scene creation
 - Advanced robot simulations with obstacle navigation
 - Interactive code preview before execution
+- Full support for NVIDIA Isaac Sim 5.1.0
+- USD asset search and 3D asset generation via Beaver3D
 
 ## Requirements
 
@@ -137,42 +140,164 @@ search a rusty desk and place it at [0, 5, 0] with scale [3, 3, 3]
 
 ## MCP Tools
 
-The Isaac Sim MCP Extension provides several specialized tools that can be accessed through natural language in Cursor AI. These tools enable you to control and manipulate NVIDIA Isaac Sim with simple commands:
+The Isaac Sim MCP Extension exposes 31 specialized tools organized into 8 categories. All tools are accessible through natural language in Cursor AI and communicate with the Isaac Sim extension running on `localhost:8766`.
 
-### Connection and Scene Management
+### Scene Management (5 tools)
 
-- **get_scene_info** - Pings the Isaac Sim Extension Server to verify connection status and retrieve basic scene information. Always use this first to ensure the connection is active.
-
-### Physics and Environment Creation
+- **get_scene_info** - Pings the Isaac Sim Extension Server to verify connection status and retrieve basic scene information. Always use this first to confirm the connection is active.
 
 - **create_physics_scene** - Creates a physics scene with configurable parameters:
   - `objects`: List of objects to create (each with type and position)
-  - `floor`: Whether to create a ground plane (default: true)
-  - `gravity`: Vector defining gravity direction and magnitude (default: [0, -0.981, 0])
-  - `scene_name`: Name for the scene (default: "physics_scene")
+  - `floor`: Whether to create a ground plane (default: `true`)
+  - `gravity`: Vector defining gravity direction and magnitude (default: `[0, -9.81, 0]`)
+  - `scene_name`: Name for the scene (default: `"physics_scene"`)
 
-### Robot Creation and Control
+- **clear_scene** - Removes all user-created prims from the current stage, leaving the default lighting and camera intact.
+
+- **list_prims** - Returns a list of all prims (objects) currently present in the stage, including their paths and types.
+
+- **get_prim_info** - Retrieves detailed information about a specific prim:
+  - `prim_path`: USD path of the prim to inspect (e.g., `"/World/Franka"`)
+
+### Object Creation (4 tools)
+
+- **create_object** - Creates a geometric primitive or mesh in the scene:
+  - `prim_type`: Shape type (e.g., `"Sphere"`, `"Cube"`, `"Cylinder"`, `"Cone"`, `"Plane"`)
+  - `prim_path`: USD path for the new object (e.g., `"/World/MySphere"`)
+  - `position`: `[x, y, z]` position coordinates
+  - `scale`: `[x, y, z]` scale factors (optional)
+  - `color`: `[r, g, b]` color values in 0–1 range (optional)
+
+- **delete_object** - Deletes a prim from the stage:
+  - `prim_path`: USD path of the prim to delete
+
+- **transform_object** - Moves, rotates, or scales an existing prim:
+  - `prim_path`: USD path of the target prim
+  - `position`: `[x, y, z]` new position (optional)
+  - `rotation`: `[x, y, z]` Euler angles in degrees (optional)
+  - `scale`: `[x, y, z]` new scale factors (optional)
+
+- **clone_object** - Duplicates an existing prim to a new path:
+  - `source_path`: USD path of the prim to clone
+  - `target_path`: USD path for the cloned copy
+  - `position`: `[x, y, z]` position for the clone (optional)
+
+### Lighting (2 tools)
+
+- **create_light** - Adds a light to the scene:
+  - `light_type`: Type of light (`"DistantLight"`, `"SphereLight"`, `"DiskLight"`, `"RectLight"`)
+  - `prim_path`: USD path for the new light
+  - `intensity`: Light intensity value
+  - `color`: `[r, g, b]` light color in 0–1 range (optional)
+  - `position`: `[x, y, z]` position coordinates (optional)
+
+- **modify_light** - Updates properties of an existing light:
+  - `prim_path`: USD path of the light to modify
+  - `intensity`: New intensity value (optional)
+  - `color`: New `[r, g, b]` color (optional)
+
+### Robot Control (5 tools)
 
 - **create_robot** - Creates a robot in the scene at a specified position:
-  - `robot_type`: Type of robot to create (options: "franka", "jetbot", "carter", "g1", "go1")
-  - `position`: [x, y, z] position coordinates
+  - `robot_type`: Robot type (`"franka"`, `"jetbot"`, `"carter"`, `"g1"`, `"go1"`)
+  - `position`: `[x, y, z]` position coordinates
+  - `robot_name`: Optional custom name for the robot prim
 
-### Omniverse Kit and Scripting
+- **list_available_robots** - Returns a list of all robot types supported by the extension, along with their USD asset paths.
 
-- **omni_kit_command** - Executes an Omni Kit command:
-  - `command`: The Omni Kit command to execute (e.g., "CreatePrim")
-  - `prim_type`: The primitive type for the command (e.g., "Sphere")
+- **get_robot_info** - Retrieves joint names, DOF counts, and current state of a robot:
+  - `robot_path`: USD path of the robot prim
 
-- **execute_script** - Executes arbitrary Python code in Isaac Sim:
-  - `code`: Python code to execute
+- **set_joint_positions** - Commands a robot's joints to target angles:
+  - `robot_path`: USD path of the robot
+  - `joint_positions`: List of joint angle values (radians)
+  - `joint_names`: List of joint names corresponding to the positions (optional)
+
+- **get_joint_positions** - Reads the current joint positions of a robot:
+  - `robot_path`: USD path of the robot
+
+### Sensors (4 tools)
+
+- **create_camera** - Adds a camera sensor to the scene:
+  - `prim_path`: USD path for the new camera
+  - `position`: `[x, y, z]` position coordinates
+  - `rotation`: `[x, y, z]` Euler angles in degrees (optional)
+  - `focal_length`: Camera focal length in mm (optional)
+
+- **capture_image** - Captures a rendered image from the specified camera:
+  - `camera_path`: USD path of the camera
+  - `output_path`: File path where the image will be saved (PNG)
+  - `resolution`: `[width, height]` in pixels (optional)
+
+- **create_lidar** - Attaches a LiDAR sensor to the scene or to a prim:
+  - `prim_path`: USD path for the LiDAR prim
+  - `parent_path`: USD path of the parent prim to attach the sensor to (optional)
+  - `position`: `[x, y, z]` position coordinates (optional)
+
+- **get_lidar_point_cloud** - Retrieves the latest point cloud data from a LiDAR sensor:
+  - `lidar_path`: USD path of the LiDAR prim
+
+### Materials (2 tools)
+
+- **create_material** - Creates an OmniPBR material and optionally writes it to a USD layer:
+  - `material_path`: USD path for the new material
+  - `color`: `[r, g, b]` base color in 0–1 range (optional)
+  - `metallic`: Metallic factor 0–1 (optional)
+  - `roughness`: Roughness factor 0–1 (optional)
+
+- **apply_material** - Binds an existing material to a prim:
+  - `prim_path`: USD path of the target prim
+  - `material_path`: USD path of the material to apply
+
+### Asset Management (4 tools)
+
+- **import_urdf** - Imports a URDF robot description file into the current stage:
+  - `urdf_path`: Absolute file path to the `.urdf` file
+  - `prim_path`: Destination USD path in the stage (optional)
+  - `position`: `[x, y, z]` placement position (optional)
+
+- **load_usd** - Loads a USD or USDA file as a reference into the stage:
+  - `usd_path`: Absolute file path or `omniverse://` URL of the USD asset
+  - `prim_path`: Destination USD path in the stage (optional)
+  - `position`: `[x, y, z]` placement position (optional)
+
+- **search_usd** - Searches the NVIDIA Omniverse asset library for USD assets matching a query:
+  - `query`: Natural language search term (e.g., `"rusty desk"`, `"warehouse shelf"`)
+  - `max_results`: Maximum number of results to return (default: `5`)
+
+- **generate_3d** - Generates a 3D asset from an image URL using the Beaver3D model and places it in the scene:
+  - `image_url`: Publicly accessible URL of the source image
+  - `prim_path`: Destination USD path in the stage
+  - `position`: `[x, y, z]` placement position (optional)
+  - `scale`: `[x, y, z]` scale factors (optional)
+
+### Simulation Control (6 tools)
+
+- **play_simulation** - Starts the physics simulation timeline.
+
+- **pause_simulation** - Pauses the running simulation while preserving the current state.
+
+- **stop_simulation** - Stops and resets the simulation timeline to the beginning.
+
+- **step_simulation** - Advances the simulation by a specified number of physics steps:
+  - `num_steps`: Number of steps to advance (default: `1`)
+
+- **set_physics_params** - Adjusts global physics parameters at runtime:
+  - `gravity`: `[x, y, z]` gravity vector (optional)
+  - `dt`: Physics timestep in seconds (optional)
+
+- **execute_script** - Executes arbitrary Python code inside Isaac Sim, giving full access to the Omniverse Kit API:
+  - `code`: Python code string to execute
 
 ### Usage Best Practices
 
-1. Always check connection with `get_scene_info` before executing any commands
-2. Initialize a physics scene with `create_physics_scene` before adding robots
-3. Use `create_robot` for standard robot placement before trying custom scripts
-4. For complex simulations, use `execute_script` with proper async patterns
-5. Preview code in chat before execution for verification
+1. Always verify the connection with `get_scene_info` before sending any commands.
+2. Call `create_physics_scene` to establish a physics environment before adding robots or dynamic objects.
+3. Use category-specific tools (e.g., `create_robot`, `create_light`) before falling back to `execute_script` for complex logic.
+4. Search for assets with `search_usd` and load them with `load_usd` to populate scenes from the Omniverse asset library.
+5. Use `set_joint_positions` and `get_joint_positions` for articulation control; use `execute_script` for multi-step trajectory execution.
+6. Call `capture_image` after `play_simulation` or `step_simulation` when sensor data is needed at a specific simulation time.
+7. Preview generated code in chat before execution to verify intent and avoid unintended scene modifications.
 
 ## Contributing
 
