@@ -116,10 +116,15 @@ def create(adapter: IsaacAdapterBase, robot_type: str = "franka", position: Opti
         prim_name = name or match["key"].capitalize()
         prim_path = f"/{prim_name}"
         adapter.add_reference_to_stage(asset_path, prim_path)
+        # Ensure the robot has ArticulationRootAPI so joints work in physics
+        articulation_applied = adapter.ensure_articulation_root(prim_path)
         if position:
             xform = adapter.create_xform_prim(prim_path)
             xform.set_world_pose(position=np.array(position))
-        return {"status": "success", "message": f"Created {match['description']} robot", "prim_path": prim_path, "robot_key": match["key"]}
+        msg = f"Created {match['description']} robot"
+        if articulation_applied:
+            msg += " (ArticulationRootAPI was missing and has been applied)"
+        return {"status": "success", "message": msg, "prim_path": prim_path, "robot_key": match["key"]}
     except Exception as e:
         return {"status": "error", "message": str(e)}
 

@@ -125,6 +125,18 @@ class IsaacAdapterBase(ABC):
         ...
 
     @abstractmethod
+    def ensure_articulation_root(self, prim_path: str) -> bool:
+        """Ensure the robot prim has ArticulationRootAPI applied.
+
+        Some robot USD assets lack the ArticulationRootAPI on their root prim,
+        causing all bodies to be treated as static. This method checks and applies
+        it if missing.
+
+        Returns True if the API was applied (was missing), False if already present.
+        """
+        ...
+
+    @abstractmethod
     def get_robot_joint_info(self, prim_path: str) -> Dict[str, Any]:
         """Return joint names, DOF count, and current positions for a robot."""
         ...

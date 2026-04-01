@@ -234,6 +234,17 @@ class IsaacAdapterV5(IsaacAdapterBase):
         from isaacsim.core.prims import SingleArticulation
         return SingleArticulation(prim_path=prim_path, name=name)
 
+    def ensure_articulation_root(self, prim_path: str) -> bool:
+        from pxr import UsdPhysics
+        stage = self.get_stage()
+        prim = stage.GetPrimAtPath(prim_path)
+        if not prim.IsValid():
+            raise ValueError(f"Prim not found: {prim_path}")
+        if prim.HasAPI(UsdPhysics.ArticulationRootAPI):
+            return False
+        UsdPhysics.ArticulationRootAPI.Apply(prim)
+        return True
+
     def get_robot_joint_info(self, prim_path: str) -> Dict[str, Any]:
         from isaacsim.core.prims import SingleArticulation
         art = SingleArticulation(prim_path=prim_path)
