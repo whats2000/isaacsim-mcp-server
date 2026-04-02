@@ -58,6 +58,8 @@ def test_adapter_base_has_all_abstract_methods():
         "create_light", "modify_light",
         "clone_prim", "import_urdf",
         "play", "pause", "stop", "step", "execute_script",
+        # Observability methods (issue #1)
+        "get_simulation_state", "get_physics_state", "get_joint_config", "reload_script",
     }
     assert methods == expected, f"Missing: {expected - methods}, Extra: {methods - expected}"
 
