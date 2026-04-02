@@ -10,7 +10,7 @@ This project connects an MCP server to an Isaac Sim extension so any MCP-compati
 
 - Built for NVIDIA Isaac Sim `5.1.0`
 - Clean split between MCP server tools and in-sim extension handlers
-- `35` tools across `8` categories for scene, robot, sensor, asset, and simulation workflows
+- `39` tools across `8` categories for scene, robot, sensor, asset, and simulation workflows
 - Modular adapter-based architecture designed to isolate Isaac Sim version-specific APIs
 - Works well for rapid scene prototyping, robotics demos, asset loading, and agent-driven simulation workflows
 
@@ -85,7 +85,7 @@ Expected startup logs should include lines similar to:
 ```text
 [ext: isaac.sim.mcp_extension-0.3.0] startup
 trigger  on_startup for:  isaac.sim.mcp_extension-0.3.0
-Registered 35 command handlers
+Registered 40 command handlers
 Isaac Sim MCP server started on localhost:8766
 ```
 
@@ -325,6 +325,10 @@ When prompting your MCP-enabled IDE or client:
 3. Prefer purpose-built tools before using `execute_script`
 4. Use `list_available_robots` or `list_environments` before fuzzy-matched loading
 5. Use `play_simulation`, `pause_simulation`, `stop_simulation`, and `step_simulation` explicitly when timing matters
+6. Use `get_simulation_state` to check timeline state and physics dt before stepping
+7. Use `get_joint_config` and `get_physics_state` to debug joint drives and rigid body issues
+8. Use `reload_script` to hot-patch controller code without restarting the simulation
+9. Use `step_simulation` with `observe_prims` and `observe_joints` for step-and-observe debugging loops
 
 ## Example Prompts
 
@@ -365,7 +369,7 @@ Generate a 3D model from this image URL and place it at [3, 0, 0] with scale [2,
 
 ## Tool Overview
 
-The MCP server currently exposes `35` tools across `8` categories.
+The MCP server currently exposes `39` tools across `8` categories.
 
 | Category | Tools | Highlights |
 | --- | ---: | --- |
@@ -376,7 +380,7 @@ The MCP server currently exposes `35` tools across `8` categories.
 | Sensors | 4 | camera and lidar creation plus capture / point cloud access |
 | Materials | 2 | create and apply materials |
 | Assets | 4 | URDF import, USD load/search, Beaver3D generation |
-| Simulation | 6 | play, pause, stop, step, set physics, execute Python |
+| Simulation | 10 | play, pause, stop, step+observe, set physics, execute Python with stdout capture, simulation state, physics inspection, joint config, hot-reload |
 
 ### Scene
 
@@ -433,9 +437,32 @@ The MCP server currently exposes `35` tools across `8` categories.
 - `play_simulation`
 - `pause_simulation`
 - `stop_simulation`
-- `step_simulation`
+- `step_simulation` — supports `observe_prims` and `observe_joints` for step-and-observe workflows
 - `set_physics_params`
-- `execute_script`
+- `execute_script` — captures `stdout`/`stderr`, supports `cwd` for module path setup
+- `get_simulation_state` — timeline state (playing/paused/stopped), current time, physics dt
+- `get_physics_state` — rigid body status, mass, velocities, kinematic flag, collision info
+- `get_joint_config` — joint drive stiffness, damping, limits, runtime target vs actual position, position error
+- `reload_script` — hot-reload Python modules or execute script files with auto `sys.path` setup
+
+## Demo: Franka Pick-and-Place
+
+The repo includes a ready-to-run pick-and-place demo at `demo/franka_pick_place.py`. It uses RMPflow for motion planning and runs as an OmniGraph ScriptNode so you can press Play/Stop to run and rerun.
+
+```text
+Ask the AI to set up the scene:
+
+1. Create a physics scene, ground plane, and a Franka FR3 robot
+2. Add two tables and a small cube on the first table
+3. Wire the pick-and-place script into an Action Graph
+4. Press Play — the robot picks the cube and places it on the second table
+```
+
+The demo showcases the observability tools for debugging:
+- `get_joint_config` to inspect drive stiffness and position error
+- `step_simulation` with `observe_prims` to track the cube during motion
+- `get_physics_state` to verify rigid body and collision setup
+- `reload_script` to iterate on the controller without restarting
 
 ## Development
 
