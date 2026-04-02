@@ -434,6 +434,40 @@ class IsaacAdapterV5(IsaacAdapterBase):
         for _ in range(num_steps):
             omni.kit.app.get_app().update()
 
+    def get_simulation_state(self) -> Dict[str, Any]:
+        import omni.timeline
+
+        timeline = omni.timeline.get_timeline_interface()
+        is_playing = timeline.is_playing()
+        is_stopped = timeline.is_stopped()
+
+        if is_playing:
+            state = "playing"
+        elif is_stopped:
+            state = "stopped"
+        else:
+            state = "paused"
+
+        current_time = timeline.get_current_time()
+        # Get physics dt from physics scene if available
+        from pxr import UsdPhysics
+        stage = self.get_stage()
+        physics_dt = 1.0 / 60.0  # default
+        for prim in stage.Traverse():
+            if prim.HasAPI(UsdPhysics.Scene):
+                time_step_attr = prim.GetAttribute("physxScene:timeStepsPerSecond")
+                if time_step_attr and time_step_attr.Get():
+                    steps_per_sec = time_step_attr.Get()
+                    if steps_per_sec > 0:
+                        physics_dt = 1.0 / steps_per_sec
+                break
+
+        return {
+            "timeline_state": state,
+            "current_time": current_time,
+            "physics_dt": physics_dt,
+        }
+
     def execute_script(self, code: str, cwd: Optional[str] = None) -> Dict[str, Any]:
         import sys
         import io

@@ -113,6 +113,16 @@ def register_tools(mcp: FastMCP, get_connection: "Callable[[], IsaacConnection]"
         except Exception as e:
             return json.dumps({"status": "error", "message": str(e)})
 
+    @mcp.tool("get_simulation_state")
+    def get_simulation_state() -> str:
+        """Get the current simulation state including timeline status, simulation time, and physics dt."""
+        try:
+            conn = get_connection()
+            result = conn.send_command("simulation.get_state")
+            return json.dumps(result, indent=2)
+        except Exception as e:
+            return json.dumps({"status": "error", "message": str(e)})
+
     @mcp.tool("execute_script")
     def execute_script(code: str, cwd: Optional[str] = None) -> str:
         """Execute arbitrary Python code in Isaac Sim. Use as an escape hatch for operations not covered by other tools.

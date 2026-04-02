@@ -263,6 +263,11 @@ class IsaacAdapterBase(ABC):
         ...
 
     @abstractmethod
+    def get_simulation_state(self) -> Dict[str, Any]:
+        """Return current timeline state, simulation time, physics dt, and step count."""
+        ...
+
+    @abstractmethod
     def execute_script(self, code: str, cwd: Optional[str] = None) -> Dict[str, Any]:
         """Execute arbitrary Python code in the Isaac Sim context.
 

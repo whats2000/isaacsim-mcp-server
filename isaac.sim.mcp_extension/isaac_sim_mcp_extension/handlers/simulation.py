@@ -35,6 +35,7 @@ def register(registry: Dict[str, Any], adapter: IsaacAdapterBase) -> None:
     registry["simulation.step"] = lambda **p: step(adapter, **p)
     registry["simulation.set_physics"] = lambda **p: set_physics(adapter, **p)
     registry["simulation.execute_script"] = lambda **p: execute_script(adapter, **p)
+    registry["simulation.get_state"] = lambda **p: get_simulation_state(adapter, **p)
     registry["simulation.get_logs"] = lambda **p: get_logs(adapter, **p)
 
 
@@ -87,6 +88,14 @@ def execute_script(adapter: IsaacAdapterBase, code: Optional[str] = None, cwd: O
             return {"status": "error", "message": "code is required"}
         result = adapter.execute_script(code, cwd=cwd)
         return {"status": "success", "result": result}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+def get_simulation_state(adapter: IsaacAdapterBase) -> Dict[str, Any]:
+    try:
+        result = adapter.get_simulation_state()
+        return {"status": "success", **result}
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
