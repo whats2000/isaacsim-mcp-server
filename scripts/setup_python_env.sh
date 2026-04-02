@@ -13,8 +13,8 @@ else
   echo "Using existing virtual environment at: $REPO_ROOT/.venv"
 fi
 
-echo "Installing MCP dependencies"
-uv pip install --python .venv/bin/python "mcp[cli]"
+echo "Installing isaacsim-mcp-server and dependencies"
+uv pip install --python .venv/bin/python -e "."
 
 echo
 echo "Done."

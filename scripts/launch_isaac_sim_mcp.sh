@@ -97,16 +97,25 @@ done
 echo "Extension socket is ready on port $MCP_PORT."
 
 # --- Start MCP server with the same port ---
-if [[ -x "$PYTHON_BIN" && -f "$REPO_ROOT/isaac_mcp/server.py" ]]; then
-  echo "Starting MCP server on port $MCP_PORT..."
+INSTALLED_CLI="$REPO_ROOT/.venv/bin/isaacsim-mcp-server"
+
+if [[ -x "$INSTALLED_CLI" ]]; then
+  echo "Starting MCP server on port $MCP_PORT (installed package)..."
+  ISAAC_MCP_PORT="$MCP_PORT" "$INSTALLED_CLI" \
+    > "$LOG_DIR/mcp_server_${MCP_PORT}.log" 2>&1 &
+  MCP_PID=$!
+  echo "MCP server started (PID: $MCP_PID)"
+elif [[ -x "$PYTHON_BIN" && -f "$REPO_ROOT/isaac_mcp/server.py" ]]; then
+  echo "Starting MCP server on port $MCP_PORT (from source)..."
   cd "$REPO_ROOT"
   ISAAC_MCP_PORT="$MCP_PORT" "$PYTHON_BIN" -m isaac_mcp.server \
     > "$LOG_DIR/mcp_server_${MCP_PORT}.log" 2>&1 &
   MCP_PID=$!
   echo "MCP server started (PID: $MCP_PID)"
 else
-  echo "Warning: MCP server Python env not found. Skipping MCP server." >&2
-  echo "Run ./scripts/setup_python_env.sh to set it up." >&2
+  echo "Warning: MCP server not found. Skipping MCP server." >&2
+  echo "Install via: pip install isaacsim-mcp-server" >&2
+  echo "Or run: ./scripts/setup_python_env.sh" >&2
 fi
 
 # --- Wait for Isaac Sim to exit ---
