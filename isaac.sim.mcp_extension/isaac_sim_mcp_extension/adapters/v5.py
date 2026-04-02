@@ -264,6 +264,72 @@ class IsaacAdapterV5(IsaacAdapterBase):
         positions = art.get_joint_positions()
         return positions.tolist() if positions is not None else []
 
+    def get_joint_config(self, prim_path: str) -> Dict[str, Any]:
+        from pxr import UsdPhysics, Usd
+        from isaacsim.core.prims import SingleArticulation
+
+        stage = self.get_stage()
+        prim = stage.GetPrimAtPath(prim_path)
+        if not prim.IsValid():
+            raise ValueError(f"Prim not found: {prim_path}")
+
+        # Get current joint positions via articulation
+        art = SingleArticulation(prim_path=prim_path)
+        joint_names = art.dof_names if art.dof_names else []
+        current_positions = art.get_joint_positions()
+        current_pos_list = current_positions.tolist() if current_positions is not None else []
+
+        joints_info = []
+
+        # Walk descendants to find joint prims
+        for desc in Usd.PrimRange(prim):
+            if desc.IsA(UsdPhysics.RevoluteJoint) or desc.IsA(UsdPhysics.PrismaticJoint):
+                joint_data: Dict[str, Any] = {"name": desc.GetName()}
+
+                if desc.IsA(UsdPhysics.RevoluteJoint):
+                    joint_data["type"] = "revolute"
+                    joint_api = UsdPhysics.RevoluteJoint(desc)
+                    lower_attr = joint_api.GetLowerLimitAttr()
+                    upper_attr = joint_api.GetUpperLimitAttr()
+                else:
+                    joint_data["type"] = "prismatic"
+                    joint_api = UsdPhysics.PrismaticJoint(desc)
+                    lower_attr = joint_api.GetLowerLimitAttr()
+                    upper_attr = joint_api.GetUpperLimitAttr()
+
+                joint_data["lower_limit"] = lower_attr.Get() if lower_attr else None
+                joint_data["upper_limit"] = upper_attr.Get() if upper_attr else None
+
+                # Get drive config
+                for drive_type in ["angular", "linear"]:
+                    drive_api = UsdPhysics.DriveAPI.Get(desc, drive_type)
+                    if drive_api:
+                        joint_data["drive_type"] = drive_type
+                        stiffness_attr = drive_api.GetStiffnessAttr()
+                        damping_attr = drive_api.GetDampingAttr()
+                        target_attr = drive_api.GetTargetPositionAttr()
+                        joint_data["stiffness"] = stiffness_attr.Get() if stiffness_attr else None
+                        joint_data["damping"] = damping_attr.Get() if damping_attr else None
+                        joint_data["target_position"] = target_attr.Get() if target_attr else None
+                        break
+
+                # Match actual position from articulation if possible
+                joint_name = desc.GetName()
+                if joint_name in joint_names:
+                    idx = joint_names.index(joint_name)
+                    if idx < len(current_pos_list):
+                        joint_data["actual_position"] = current_pos_list[idx]
+                        if joint_data.get("target_position") is not None:
+                            joint_data["position_error"] = joint_data["target_position"] - current_pos_list[idx]
+
+                joints_info.append(joint_data)
+
+        return {
+            "prim_path": prim_path,
+            "joint_count": len(joints_info),
+            "joints": joints_info,
+        }
+
     # ── Physics ────────────────────────────────────────────
 
     def create_world(self, **kwargs) -> Any:

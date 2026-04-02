@@ -38,6 +38,7 @@ def register(registry: Dict[str, Any], adapter: IsaacAdapterBase) -> None:
     registry["simulation.get_state"] = lambda **p: get_simulation_state(adapter, **p)
     registry["simulation.get_logs"] = lambda **p: get_logs(adapter, **p)
     registry["simulation.get_physics_state"] = lambda **p: get_physics_state_handler(adapter, **p)
+    registry["simulation.get_joint_config"] = lambda **p: get_joint_config_handler(adapter, **p)
 
 
 def play(adapter: IsaacAdapterBase) -> Dict[str, Any]:
@@ -106,6 +107,16 @@ def get_physics_state_handler(adapter: IsaacAdapterBase, prim_path: Optional[str
         if not prim_path:
             return {"status": "error", "message": "prim_path is required"}
         result = adapter.get_physics_state(prim_path)
+        return {"status": "success", **result}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+def get_joint_config_handler(adapter: IsaacAdapterBase, prim_path: Optional[str] = None) -> Dict[str, Any]:
+    try:
+        if not prim_path:
+            return {"status": "error", "message": "prim_path is required"}
+        result = adapter.get_joint_config(prim_path)
         return {"status": "success", **result}
     except Exception as e:
         return {"status": "error", "message": str(e)}

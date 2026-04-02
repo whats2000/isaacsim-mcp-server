@@ -141,6 +141,11 @@ class IsaacAdapterBase(ABC):
         """Read current joint positions from a robot articulation."""
         ...
 
+    @abstractmethod
+    def get_joint_config(self, prim_path: str) -> Dict[str, Any]:
+        """Return joint drive configuration: stiffness, damping, limits, target vs actual positions."""
+        ...
+
     # ── Physics ────────────────────────────────────────────
 
     @abstractmethod

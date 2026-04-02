@@ -137,6 +137,20 @@ def register_tools(mcp: FastMCP, get_connection: "Callable[[], IsaacConnection]"
         except Exception as e:
             return json.dumps({"status": "error", "message": str(e)})
 
+    @mcp.tool("get_joint_config")
+    def get_joint_config(prim_path: str) -> str:
+        """Get joint drive configuration for a robot articulation including stiffness, damping, limits, target vs actual positions, and position error.
+
+        Args:
+            prim_path: USD path to the robot articulation root.
+        """
+        try:
+            conn = get_connection()
+            result = conn.send_command("simulation.get_joint_config", {"prim_path": prim_path})
+            return json.dumps(result, indent=2)
+        except Exception as e:
+            return json.dumps({"status": "error", "message": str(e)})
+
     @mcp.tool("execute_script")
     def execute_script(code: str, cwd: Optional[str] = None) -> str:
         """Execute arbitrary Python code in Isaac Sim. Use as an escape hatch for operations not covered by other tools.
