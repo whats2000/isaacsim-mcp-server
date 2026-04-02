@@ -33,7 +33,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: pypi
-      url: https://pypi.org/p/isaac-sim-mcp
+      url: https://pypi.org/p/isaacsim-mcp-server
     steps:
       - uses: actions/checkout@v4
 

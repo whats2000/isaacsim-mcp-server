@@ -31,12 +31,12 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/omni-mcp/isaac-sim-mcp"
-Repository = "https://github.com/omni-mcp/isaac-sim-mcp"
-Issues = "https://github.com/omni-mcp/isaac-sim-mcp/issues"
+Homepage = "https://github.com/whats2000/isaacsim-mcp-server"
+Repository = "https://github.com/whats2000/isaacsim-mcp-server"
+Issues = "https://github.com/whats2000/isaacsim-mcp-server/issues"
 
 [project.scripts]
-isaac-sim-mcp = "isaac_mcp.server:main"
+isaacsim-mcp-server = "isaac_mcp.server:main"
 
 [tool.hatch.version]
 path = "isaac_mcp/__init__.py"

@@ -1,8 +1,8 @@
 # Isaac Sim MCP
 
-[![PyPI version](https://img.shields.io/pypi/v/isaac-sim-mcp)](https://pypi.org/project/isaac-sim-mcp/)
+[![PyPI version](https://img.shields.io/pypi/v/isaacsim-mcp-server)](https://pypi.org/project/isaacsim-mcp-server/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![MCP Quality](https://archestra.ai/mcp-catalog/api/badge/quality/whats2000/isaac-sim-mcp)](https://archestra.ai/mcp-catalog/api/badge/quality/whats2000/isaac-sim-mcp)
+[![MCP Quality](https://archestra.ai/mcp-catalog/api/badge/quality/whats2000/isaacsim-mcp-server)](https://archestra.ai/mcp-catalog/api/badge/quality/whats2000/isaacsim-mcp-server)
 
 Natural language control for NVIDIA Isaac Sim through the Model Context Protocol (MCP).
 
@@ -60,14 +60,14 @@ Handlers -> Adapter -> Isaac Sim 5.1.0 APIs
 ```bash
 mkdir -p ~/Documents/GitHub
 cd ~/Documents/GitHub
-git clone https://github.com/omni-mcp/isaac-sim-mcp
-cd ~/Documents/GitHub/isaac-sim-mcp
+git clone https://github.com/whats2000/isaacsim-mcp-server
+cd ~/Documents/GitHub/isaacsim-mcp-server
 ```
 
 ### Alternative: Install from PyPI
 
 ```bash
-pip install isaac-sim-mcp
+pip install isaacsim-mcp-server
 ```
 
 This installs the MCP server only. You still need Isaac Sim with the extension running (see steps 3-4 below).
@@ -111,7 +111,7 @@ This script is the command your MCP client should launch:
 
 ### 5. Add the MCP server to your IDE
 
-Replace `/absolute/path/to/isaac-sim-mcp` with your actual repo path in the examples below.
+Replace `/absolute/path/to/isaacsim-mcp-server` with your actual repo path in the examples below.
 
 #### Cursor
 
@@ -121,7 +121,7 @@ Open **Cursor Settings > MCP** and add a new global MCP server, or edit `~/.curs
 {
   "mcpServers": {
     "isaac-sim": {
-      "command": "/absolute/path/to/isaac-sim-mcp/scripts/run_mcp_server.sh"
+      "command": "/absolute/path/to/isaacsim-mcp-server/scripts/run_mcp_server.sh"
     }
   }
 }
@@ -135,7 +135,7 @@ Create or edit `.vscode/mcp.json` in your workspace root:
 {
   "servers": {
     "isaac-sim": {
-      "command": "/absolute/path/to/isaac-sim-mcp/scripts/run_mcp_server.sh"
+      "command": "/absolute/path/to/isaacsim-mcp-server/scripts/run_mcp_server.sh"
     }
   }
 }
@@ -148,7 +148,7 @@ Alternatively, add it to your User or Workspace `settings.json`:
   "mcp": {
     "servers": {
       "isaac-sim": {
-        "command": "/absolute/path/to/isaac-sim-mcp/scripts/run_mcp_server.sh"
+        "command": "/absolute/path/to/isaacsim-mcp-server/scripts/run_mcp_server.sh"
       }
     }
   }
@@ -160,7 +160,7 @@ Alternatively, add it to your User or Workspace `settings.json`:
 Add the server using the CLI:
 
 ```bash
-claude mcp add isaac-sim /absolute/path/to/isaac-sim-mcp/scripts/run_mcp_server.sh
+claude mcp add isaac-sim /absolute/path/to/isaacsim-mcp-server/scripts/run_mcp_server.sh
 ```
 
 Or manually edit `~/.claude.json` (global) or `.mcp.json` (project-level):
@@ -169,7 +169,7 @@ Or manually edit `~/.claude.json` (global) or `.mcp.json` (project-level):
 {
   "mcpServers": {
     "isaac-sim": {
-      "command": "/absolute/path/to/isaac-sim-mcp/scripts/run_mcp_server.sh"
+      "command": "/absolute/path/to/isaacsim-mcp-server/scripts/run_mcp_server.sh"
     }
   }
 }
@@ -187,7 +187,7 @@ Edit the config file:
 {
   "mcpServers": {
     "isaac-sim": {
-      "command": "/absolute/path/to/isaac-sim-mcp/scripts/run_mcp_server.sh"
+      "command": "/absolute/path/to/isaacsim-mcp-server/scripts/run_mcp_server.sh"
     }
   }
 }
@@ -201,7 +201,7 @@ Open **Windsurf Settings > MCP** or edit `~/.codeium/windsurf/mcp_config.json`:
 {
   "mcpServers": {
     "isaac-sim": {
-      "command": "/absolute/path/to/isaac-sim-mcp/scripts/run_mcp_server.sh"
+      "command": "/absolute/path/to/isaacsim-mcp-server/scripts/run_mcp_server.sh"
     }
   }
 }
@@ -219,10 +219,10 @@ You can run multiple Isaac Sim sessions side by side. Each instance uses a diffe
 
 ```bash
 # First instance (default port 8766)
-claude mcp add isaac-sim /absolute/path/to/isaac-sim-mcp/scripts/run_mcp_server.sh
+claude mcp add isaac-sim /absolute/path/to/isaacsim-mcp-server/scripts/run_mcp_server.sh
 
 # Second instance (port 8767)
-claude mcp add isaac-sim-2 -e ISAAC_MCP_PORT=8767 -- /absolute/path/to/isaac-sim-mcp/scripts/run_mcp_server.sh
+claude mcp add isaac-sim-2 -e ISAAC_MCP_PORT=8767 -- /absolute/path/to/isaacsim-mcp-server/scripts/run_mcp_server.sh
 ```
 
 #### Cursor / Claude Desktop / Windsurf
@@ -233,10 +233,10 @@ Add multiple entries to your MCP config, each with a different `ISAAC_MCP_PORT`:
 {
   "mcpServers": {
     "isaac-sim": {
-      "command": "/absolute/path/to/isaac-sim-mcp/scripts/run_mcp_server.sh"
+      "command": "/absolute/path/to/isaacsim-mcp-server/scripts/run_mcp_server.sh"
     },
     "isaac-sim-2": {
-      "command": "/absolute/path/to/isaac-sim-mcp/scripts/run_mcp_server.sh",
+      "command": "/absolute/path/to/isaacsim-mcp-server/scripts/run_mcp_server.sh",
       "env": {
         "ISAAC_MCP_PORT": "8767"
       }
@@ -251,10 +251,10 @@ Add multiple entries to your MCP config, each with a different `ISAAC_MCP_PORT`:
 {
   "servers": {
     "isaac-sim": {
-      "command": "/absolute/path/to/isaac-sim-mcp/scripts/run_mcp_server.sh"
+      "command": "/absolute/path/to/isaacsim-mcp-server/scripts/run_mcp_server.sh"
     },
     "isaac-sim-2": {
-      "command": "/absolute/path/to/isaac-sim-mcp/scripts/run_mcp_server.sh",
+      "command": "/absolute/path/to/isaacsim-mcp-server/scripts/run_mcp_server.sh",
       "env": {
         "ISAAC_MCP_PORT": "8767"
       }
