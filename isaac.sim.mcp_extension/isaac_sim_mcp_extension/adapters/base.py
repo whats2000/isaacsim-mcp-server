@@ -158,6 +158,11 @@ class IsaacAdapterBase(ABC):
         """Create a physics scene prim with gravity settings."""
         ...
 
+    @abstractmethod
+    def get_physics_state(self, prim_path: str) -> Dict[str, Any]:
+        """Return physics state for a prim: rigid body, mass, velocities, contacts."""
+        ...
+
     # ── Sensors ────────────────────────────────────────────
 
     @abstractmethod

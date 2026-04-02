@@ -123,6 +123,20 @@ def register_tools(mcp: FastMCP, get_connection: "Callable[[], IsaacConnection]"
         except Exception as e:
             return json.dumps({"status": "error", "message": str(e)})
 
+    @mcp.tool("get_physics_state")
+    def get_physics_state(prim_path: str) -> str:
+        """Get physics state for a prim including rigid body status, mass, velocities, kinematic flag, and collision info.
+
+        Args:
+            prim_path: USD path to the prim to inspect.
+        """
+        try:
+            conn = get_connection()
+            result = conn.send_command("simulation.get_physics_state", {"prim_path": prim_path})
+            return json.dumps(result, indent=2)
+        except Exception as e:
+            return json.dumps({"status": "error", "message": str(e)})
+
     @mcp.tool("execute_script")
     def execute_script(code: str, cwd: Optional[str] = None) -> str:
         """Execute arbitrary Python code in Isaac Sim. Use as an escape hatch for operations not covered by other tools.

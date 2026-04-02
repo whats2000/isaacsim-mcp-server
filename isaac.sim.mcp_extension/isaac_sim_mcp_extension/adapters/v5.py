@@ -280,6 +280,59 @@ class IsaacAdapterV5(IsaacAdapterBase):
         omni.kit.commands.execute("CreatePrim", prim_path=scene_path, prim_type="PhysicsScene")
         return scene_path
 
+    def get_physics_state(self, prim_path: str) -> Dict[str, Any]:
+        from pxr import UsdPhysics, Gf
+        stage = self.get_stage()
+        prim = stage.GetPrimAtPath(prim_path)
+        if not prim.IsValid():
+            raise ValueError(f"Prim not found: {prim_path}")
+
+        result: Dict[str, Any] = {"prim_path": prim_path}
+
+        # Check rigid body API
+        has_rb = prim.HasAPI(UsdPhysics.RigidBodyAPI)
+        result["has_rigid_body"] = has_rb
+
+        if has_rb:
+            rb = UsdPhysics.RigidBodyAPI(prim)
+            kinematic_attr = rb.GetKinematicEnabledAttr()
+            result["is_kinematic"] = kinematic_attr.Get() if kinematic_attr else False
+
+        # Check mass
+        has_mass = prim.HasAPI(UsdPhysics.MassAPI)
+        if has_mass:
+            mass_api = UsdPhysics.MassAPI(prim)
+            mass_attr = mass_api.GetMassAttr()
+            result["mass"] = mass_attr.Get() if mass_attr else None
+
+        # Check collision
+        has_collision = prim.HasAPI(UsdPhysics.CollisionAPI)
+        result["collision_enabled"] = has_collision
+
+        # Get velocities via PhysX if simulation is running
+        try:
+            import omni.physx
+            physx_interface = omni.physx.get_physx_interface()
+            rigid_body_handle = physx_interface.get_rigidbody_transformation(prim_path)
+            if rigid_body_handle:
+                result["linear_velocity"] = list(rigid_body_handle.get("linear_velocity", [0, 0, 0]))
+                result["angular_velocity"] = list(rigid_body_handle.get("angular_velocity", [0, 0, 0]))
+        except Exception:
+            # Velocities not available when simulation isn't running
+            if has_rb:
+                result["linear_velocity"] = [0.0, 0.0, 0.0]
+                result["angular_velocity"] = [0.0, 0.0, 0.0]
+
+        # Get contact info if available
+        try:
+            from omni.physx import get_physx_scene_query_interface
+            contacts = []
+            result["contacts"] = contacts
+        except Exception:
+            result["contacts"] = []
+
+        return result
+
     # ── Sensors ────────────────────────────────────────────
 
     def create_camera(self, prim_path: str, resolution: Tuple[int, int] = (1280, 720), **kwargs) -> Any:
