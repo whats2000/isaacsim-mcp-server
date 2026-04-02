@@ -24,7 +24,8 @@
 """Robot creation and control MCP tools."""
 
 import json
-from typing import Callable, List, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable, List, Optional
+
 from mcp.server.fastmcp import FastMCP
 
 if TYPE_CHECKING:
@@ -34,7 +35,9 @@ if TYPE_CHECKING:
 def register_tools(mcp: FastMCP, get_connection: "Callable[[], IsaacConnection]") -> None:
 
     @mcp.tool("create_robot")
-    def create_robot(robot_type: str = "franka", position: Optional[List[float]] = None, name: Optional[str] = None) -> str:
+    def create_robot(
+        robot_type: str = "franka", position: Optional[List[float]] = None, name: Optional[str] = None
+    ) -> str:
         """Create a robot in the scene. Supports fuzzy matching — e.g. "franka", "spot", "g1", "go1".
         Call list_available_robots first to see all available robots discovered from the Isaac Sim asset server.
         Call create_physics_scene before creating robots.
@@ -47,8 +50,10 @@ def register_tools(mcp: FastMCP, get_connection: "Callable[[], IsaacConnection]"
         try:
             conn = get_connection()
             params = {"robot_type": robot_type}
-            if position: params["position"] = position
-            if name: params["name"] = name
+            if position:
+                params["position"] = position
+            if name:
+                params["name"] = name
             result = conn.send_command("robots.create", params)
             return json.dumps(result, indent=2)
         except Exception as e:
@@ -91,7 +96,9 @@ def register_tools(mcp: FastMCP, get_connection: "Callable[[], IsaacConnection]"
             return json.dumps({"status": "error", "message": str(e)})
 
     @mcp.tool("set_joint_positions")
-    def set_joint_positions(prim_path: str, joint_positions: List[float], joint_indices: Optional[List[int]] = None) -> str:
+    def set_joint_positions(
+        prim_path: str, joint_positions: List[float], joint_indices: Optional[List[int]] = None
+    ) -> str:
         """Set target joint positions on a robot.
 
         Args:
@@ -102,7 +109,8 @@ def register_tools(mcp: FastMCP, get_connection: "Callable[[], IsaacConnection]"
         try:
             conn = get_connection()
             params = {"prim_path": prim_path, "joint_positions": joint_positions}
-            if joint_indices: params["joint_indices"] = joint_indices
+            if joint_indices:
+                params["joint_indices"] = joint_indices
             result = conn.send_command("robots.set_joints", params)
             return json.dumps(result, indent=2)
         except Exception as e:

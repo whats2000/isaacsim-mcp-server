@@ -24,7 +24,8 @@
 """Simulation control MCP tools."""
 
 import json
-from typing import Callable, List, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable, List, Optional
+
 from mcp.server.fastmcp import FastMCP
 
 if TYPE_CHECKING:
@@ -64,8 +65,9 @@ def register_tools(mcp: FastMCP, get_connection: "Callable[[], IsaacConnection]"
             return json.dumps({"status": "error", "message": str(e)})
 
     @mcp.tool("step_simulation")
-    def step_simulation(num_steps: int = 1, observe_prims: Optional[List[str]] = None,
-                        observe_joints: Optional[List[str]] = None) -> str:
+    def step_simulation(
+        num_steps: int = 1, observe_prims: Optional[List[str]] = None, observe_joints: Optional[List[str]] = None
+    ) -> str:
         """Step the simulation forward by N frames, optionally observing prim and joint states after stepping.
 
         Args:
@@ -86,8 +88,9 @@ def register_tools(mcp: FastMCP, get_connection: "Callable[[], IsaacConnection]"
             return json.dumps({"status": "error", "message": str(e)})
 
     @mcp.tool("set_physics_params")
-    def set_physics_params(gravity: Optional[List[float]] = None, time_step: Optional[float] = None,
-                           gpu_enabled: Optional[bool] = None) -> str:
+    def set_physics_params(
+        gravity: Optional[List[float]] = None, time_step: Optional[float] = None, gpu_enabled: Optional[bool] = None
+    ) -> str:
         """Configure physics engine parameters.
 
         Args:
@@ -98,9 +101,12 @@ def register_tools(mcp: FastMCP, get_connection: "Callable[[], IsaacConnection]"
         try:
             conn = get_connection()
             params = {}
-            if gravity is not None: params["gravity"] = gravity
-            if time_step is not None: params["time_step"] = time_step
-            if gpu_enabled is not None: params["gpu_enabled"] = gpu_enabled
+            if gravity is not None:
+                params["gravity"] = gravity
+            if time_step is not None:
+                params["time_step"] = time_step
+            if gpu_enabled is not None:
+                params["gpu_enabled"] = gpu_enabled
             result = conn.send_command("simulation.set_physics", params)
             return json.dumps(result, indent=2)
         except Exception as e:

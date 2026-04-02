@@ -25,10 +25,10 @@
 
 from __future__ import annotations
 
-import os
-import socket
 import json
 import logging
+import os
+import socket
 from dataclasses import dataclass, field
 from typing import Any, Dict, Optional
 
@@ -47,6 +47,7 @@ class IsaacConnection:
     def __post_init__(self):
         if self.port == 0:
             self.port = int(os.environ.get("ISAAC_MCP_PORT", DEFAULT_PORT))
+
     sock: Optional[socket.socket] = field(default=None, repr=False)
 
     def connect(self) -> bool:
@@ -91,7 +92,7 @@ class IsaacConnection:
                         continue
                 except socket.timeout:
                     break
-                except (ConnectionError, BrokenPipeError, ConnectionResetError) as e:
+                except (ConnectionError, BrokenPipeError, ConnectionResetError):
                     raise
         except socket.timeout:
             pass

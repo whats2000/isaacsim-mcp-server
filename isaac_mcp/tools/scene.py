@@ -24,7 +24,8 @@
 """Scene management MCP tools."""
 
 import json
-from typing import Callable, Dict, Any, List, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable, List, Optional
+
 from mcp.server.fastmcp import FastMCP
 
 if TYPE_CHECKING:

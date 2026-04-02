@@ -24,7 +24,8 @@
 """Material MCP tools."""
 
 import json
-from typing import Callable, List, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable, List, Optional
+
 from mcp.server.fastmcp import FastMCP
 
 if TYPE_CHECKING:
@@ -53,8 +54,10 @@ def register_tools(mcp: FastMCP, get_connection: "Callable[[], IsaacConnection]"
         try:
             conn = get_connection()
             params = {"material_type": material_type, "roughness": roughness, "metallic": metallic}
-            if prim_path: params["prim_path"] = prim_path
-            if color: params["color"] = color
+            if prim_path:
+                params["prim_path"] = prim_path
+            if color:
+                params["color"] = color
             result = conn.send_command("materials.create", params)
             return json.dumps(result, indent=2)
         except Exception as e:
@@ -70,7 +73,9 @@ def register_tools(mcp: FastMCP, get_connection: "Callable[[], IsaacConnection]"
         """
         try:
             conn = get_connection()
-            result = conn.send_command("materials.apply", {"material_path": material_path, "target_prim_path": target_prim_path})
+            result = conn.send_command(
+                "materials.apply", {"material_path": material_path, "target_prim_path": target_prim_path}
+            )
             return json.dumps(result, indent=2)
         except Exception as e:
             return json.dumps({"status": "error", "message": str(e)})

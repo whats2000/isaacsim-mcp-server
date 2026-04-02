@@ -24,7 +24,8 @@
 """Lighting MCP tools."""
 
 import json
-from typing import Callable, List, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable, List, Optional
+
 from mcp.server.fastmcp import FastMCP
 
 if TYPE_CHECKING:
@@ -55,10 +56,14 @@ def register_tools(mcp: FastMCP, get_connection: "Callable[[], IsaacConnection]"
         try:
             conn = get_connection()
             params = {"light_type": light_type, "intensity": intensity}
-            if position: params["position"] = position
-            if color: params["color"] = color
-            if rotation: params["rotation"] = rotation
-            if prim_path: params["prim_path"] = prim_path
+            if position:
+                params["position"] = position
+            if color:
+                params["color"] = color
+            if rotation:
+                params["rotation"] = rotation
+            if prim_path:
+                params["prim_path"] = prim_path
             result = conn.send_command("lighting.create", params)
             return json.dumps(result, indent=2)
         except Exception as e:
@@ -76,8 +81,10 @@ def register_tools(mcp: FastMCP, get_connection: "Callable[[], IsaacConnection]"
         try:
             conn = get_connection()
             params = {"prim_path": prim_path}
-            if intensity is not None: params["intensity"] = intensity
-            if color: params["color"] = color
+            if intensity is not None:
+                params["intensity"] = intensity
+            if color:
+                params["color"] = color
             result = conn.send_command("lighting.modify", params)
             return json.dumps(result, indent=2)
         except Exception as e:

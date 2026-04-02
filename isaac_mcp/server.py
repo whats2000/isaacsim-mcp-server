@@ -27,11 +27,13 @@ Registers all tools from tools/ submodules and starts the FastMCP server.
 """
 
 import logging
+from contextlib import asynccontextmanager
+from typing import Any, AsyncIterator, Dict
+
 from mcp.server.fastmcp import FastMCP
+
 from isaac_mcp.connection import get_isaac_connection, reset_isaac_connection
 from isaac_mcp.tools import register_all_tools
-from contextlib import asynccontextmanager
-from typing import AsyncIterator, Dict, Any
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger("IsaacMCPServer")

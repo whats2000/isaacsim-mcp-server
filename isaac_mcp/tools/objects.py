@@ -24,7 +24,8 @@
 """Object creation and manipulation MCP tools."""
 
 import json
-from typing import Callable, Dict, Any, List, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable, List, Optional
+
 from mcp.server.fastmcp import FastMCP
 
 if TYPE_CHECKING:
@@ -57,11 +58,16 @@ def register_tools(mcp: FastMCP, get_connection: "Callable[[], IsaacConnection]"
         try:
             conn = get_connection()
             params = {"object_type": object_type, "physics_enabled": physics_enabled}
-            if position: params["position"] = position
-            if rotation: params["rotation"] = rotation
-            if scale: params["scale"] = scale
-            if color: params["color"] = color
-            if prim_path: params["prim_path"] = prim_path
+            if position:
+                params["position"] = position
+            if rotation:
+                params["rotation"] = rotation
+            if scale:
+                params["scale"] = scale
+            if color:
+                params["color"] = color
+            if prim_path:
+                params["prim_path"] = prim_path
             result = conn.send_command("objects.create", params)
             return json.dumps(result, indent=2)
         except Exception as e:
@@ -99,9 +105,12 @@ def register_tools(mcp: FastMCP, get_connection: "Callable[[], IsaacConnection]"
         try:
             conn = get_connection()
             params = {"prim_path": prim_path}
-            if position: params["position"] = position
-            if rotation: params["rotation"] = rotation
-            if scale: params["scale"] = scale
+            if position:
+                params["position"] = position
+            if rotation:
+                params["rotation"] = rotation
+            if scale:
+                params["scale"] = scale
             result = conn.send_command("objects.transform", params)
             return json.dumps(result, indent=2)
         except Exception as e:
@@ -119,7 +128,8 @@ def register_tools(mcp: FastMCP, get_connection: "Callable[[], IsaacConnection]"
         try:
             conn = get_connection()
             params = {"source_path": source_path, "target_path": target_path}
-            if position: params["position"] = position
+            if position:
+                params["position"] = position
             result = conn.send_command("objects.clone", params)
             return json.dumps(result, indent=2)
         except Exception as e:
