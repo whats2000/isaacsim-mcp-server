@@ -9,7 +9,7 @@
 
 Connect any MCP-compatible IDE (Cursor, VS Code, Claude Code, Windsurf, JetBrains) to a running Isaac Sim instance and control it with plain-English prompts -- create robots, build scenes, run simulations, and debug physics all from your editor.
 
-![Robot Party Demo](media/add_more_robot_into_party.gif)
+![Robot Party Demo](https://raw.githubusercontent.com/whats2000/isaacsim-mcp-server/main/media/add_more_robot_into_party.gif)
 
 ---
 
