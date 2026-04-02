@@ -548,10 +548,55 @@ class IsaacAdapterV5(IsaacAdapterBase):
         import omni.timeline
         omni.timeline.get_timeline_interface().stop()
 
-    def step(self, num_steps: int = 1) -> None:
+    def step(self, num_steps: int = 1, observe_prims: Optional[List[str]] = None,
+             observe_joints: Optional[List[str]] = None) -> Dict[str, Any]:
         import omni.kit.app
+
         for _ in range(num_steps):
             omni.kit.app.get_app().update()
+
+        result: Dict[str, Any] = {"stepped": num_steps}
+
+        # Observe prim states
+        if observe_prims:
+            from pxr import UsdPhysics
+            prim_states = []
+            stage = self.get_stage()
+            for path in observe_prims:
+                prim = stage.GetPrimAtPath(path)
+                if not prim.IsValid():
+                    prim_states.append({"prim_path": path, "error": "Prim not found"})
+                    continue
+                state: Dict[str, Any] = {"prim_path": path}
+                transform = self.get_prim_transform(path)
+                state["position"] = transform.get("position", [0, 0, 0])
+                # Add velocity if rigid body
+                if prim.HasAPI(UsdPhysics.RigidBodyAPI):
+                    try:
+                        physics_state = self.get_physics_state(path)
+                        state["linear_velocity"] = physics_state.get("linear_velocity", [0, 0, 0])
+                        state["angular_velocity"] = physics_state.get("angular_velocity", [0, 0, 0])
+                    except Exception:
+                        pass
+                prim_states.append(state)
+            result["prim_states"] = prim_states
+
+        # Observe joint states
+        if observe_joints:
+            joint_states = []
+            for path in observe_joints:
+                try:
+                    positions = self.get_joint_positions(path)
+                    from isaacsim.core.prims import SingleArticulation
+                    art = SingleArticulation(prim_path=path)
+                    names = art.dof_names if art.dof_names else []
+                    joints_dict = dict(zip(names, positions)) if names else {"positions": positions}
+                    joint_states.append({"prim_path": path, "joints": joints_dict})
+                except Exception as e:
+                    joint_states.append({"prim_path": path, "error": str(e)})
+            result["joint_states"] = joint_states
+
+        return result
 
     def get_simulation_state(self) -> Dict[str, Any]:
         import omni.timeline

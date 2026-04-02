@@ -268,8 +268,15 @@ class IsaacAdapterBase(ABC):
         ...
 
     @abstractmethod
-    def step(self, num_steps: int = 1) -> None:
-        """Step the simulation forward."""
+    def step(self, num_steps: int = 1, observe_prims: Optional[List[str]] = None,
+             observe_joints: Optional[List[str]] = None) -> Dict[str, Any]:
+        """Step the simulation forward and optionally observe prim/joint states.
+
+        Args:
+            num_steps: Number of frames to step.
+            observe_prims: Prim paths to snapshot after stepping (transform + velocity).
+            observe_joints: Articulation paths to snapshot (joint positions).
+        """
         ...
 
     @abstractmethod

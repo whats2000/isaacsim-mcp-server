@@ -63,15 +63,23 @@ def register_tools(mcp: FastMCP, get_connection: "Callable[[], IsaacConnection]"
             return json.dumps({"status": "error", "message": str(e)})
 
     @mcp.tool("step_simulation")
-    def step_simulation(num_steps: int = 1) -> str:
-        """Step the simulation forward by N frames.
+    def step_simulation(num_steps: int = 1, observe_prims: Optional[List[str]] = None,
+                        observe_joints: Optional[List[str]] = None) -> str:
+        """Step the simulation forward by N frames, optionally observing prim and joint states after stepping.
 
         Args:
             num_steps: Number of simulation frames to step.
+            observe_prims: Optional list of prim paths to observe (returns position + velocity).
+            observe_joints: Optional list of articulation prim paths to observe (returns joint positions).
         """
         try:
             conn = get_connection()
-            result = conn.send_command("simulation.step", {"num_steps": num_steps})
+            params = {"num_steps": num_steps}
+            if observe_prims is not None:
+                params["observe_prims"] = observe_prims
+            if observe_joints is not None:
+                params["observe_joints"] = observe_joints
+            result = conn.send_command("simulation.step", params)
             return json.dumps(result, indent=2)
         except Exception as e:
             return json.dumps({"status": "error", "message": str(e)})

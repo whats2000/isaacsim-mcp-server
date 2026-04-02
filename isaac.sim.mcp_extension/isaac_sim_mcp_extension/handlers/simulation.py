@@ -66,10 +66,13 @@ def stop(adapter: IsaacAdapterBase) -> Dict[str, Any]:
         return {"status": "error", "message": str(e)}
 
 
-def step(adapter: IsaacAdapterBase, num_steps: int = 1) -> Dict[str, Any]:
+def step(adapter: IsaacAdapterBase, num_steps: int = 1,
+         observe_prims: Optional[Sequence[str]] = None,
+         observe_joints: Optional[Sequence[str]] = None) -> Dict[str, Any]:
     try:
-        adapter.step(num_steps=num_steps)
-        return {"status": "success", "message": f"Stepped {num_steps} frames"}
+        result = adapter.step(num_steps=num_steps, observe_prims=observe_prims,
+                              observe_joints=observe_joints)
+        return {"status": "success", "message": f"Stepped {num_steps} frames", **result}
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
