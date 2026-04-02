@@ -1,5 +1,8 @@
 # Isaac Sim MCP
 
+[![PyPI version](https://img.shields.io/pypi/v/isaac-sim-mcp)](https://pypi.org/project/isaac-sim-mcp/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 Natural language control for NVIDIA Isaac Sim through the Model Context Protocol (MCP).
 
 This project connects an MCP server to an Isaac Sim extension so any MCP-compatible IDE or client can inspect scenes, create robots and assets, control simulation, and execute targeted Python inside Isaac Sim from plain-English prompts.
@@ -59,6 +62,14 @@ cd ~/Documents/GitHub
 git clone https://github.com/omni-mcp/isaac-sim-mcp
 cd ~/Documents/GitHub/isaac-sim-mcp
 ```
+
+### Alternative: Install from PyPI
+
+```bash
+pip install isaac-sim-mcp
+```
+
+This installs the MCP server only. You still need Isaac Sim with the extension running (see steps 3-4 below).
 
 ### 2. Set up Python once
 
