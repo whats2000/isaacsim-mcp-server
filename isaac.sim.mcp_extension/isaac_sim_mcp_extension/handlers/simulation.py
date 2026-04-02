@@ -154,7 +154,7 @@ def _ensure_log_listener():
 
     logger = omni.log.get_log()
 
-    def _on_log(source, level, filename, function_name, line, message):
+    def _on_log(source, level, filename, function_name, module_name, line, message, pid, tid, timestamp):
         if level >= omni.log.Level.WARN:
             level_name = "WARN" if level == omni.log.Level.WARN else "ERROR"
             entry = f"[{level_name}] [{source}] {message}"
@@ -163,7 +163,7 @@ def _ensure_log_listener():
                 _log_buffer.pop(0)
 
     logger.set_channel_enabled("*", True, omni.log.SettingBehavior.OVERRIDE)
-    logger.add_log_callback(_on_log)
+    logger.add_message_consumer(_on_log)
     _log_listener_active = True
 
 
