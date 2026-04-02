@@ -286,3 +286,13 @@ class IsaacAdapterBase(ABC):
             cwd: Optional working directory to add to sys.path before execution.
         """
         ...
+
+    @abstractmethod
+    def reload_script(self, file_path: str, module_name: Optional[str] = None) -> Dict[str, Any]:
+        """Reload a Python script or module into the Isaac Sim runtime.
+
+        Args:
+            file_path: Path to the Python file.
+            module_name: If provided, reload this module. Otherwise execute the file.
+        """
+        ...

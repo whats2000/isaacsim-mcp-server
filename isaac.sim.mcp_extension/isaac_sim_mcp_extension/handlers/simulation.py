@@ -39,6 +39,7 @@ def register(registry: Dict[str, Any], adapter: IsaacAdapterBase) -> None:
     registry["simulation.get_logs"] = lambda **p: get_logs(adapter, **p)
     registry["simulation.get_physics_state"] = lambda **p: get_physics_state_handler(adapter, **p)
     registry["simulation.get_joint_config"] = lambda **p: get_joint_config_handler(adapter, **p)
+    registry["simulation.reload_script"] = lambda **p: reload_script_handler(adapter, **p)
 
 
 def play(adapter: IsaacAdapterBase) -> Dict[str, Any]:
@@ -118,6 +119,16 @@ def get_joint_config_handler(adapter: IsaacAdapterBase, prim_path: Optional[str]
             return {"status": "error", "message": "prim_path is required"}
         result = adapter.get_joint_config(prim_path)
         return {"status": "success", **result}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+def reload_script_handler(adapter: IsaacAdapterBase, file_path: Optional[str] = None, module_name: Optional[str] = None) -> Dict[str, Any]:
+    try:
+        if not file_path:
+            return {"status": "error", "message": "file_path is required"}
+        result = adapter.reload_script(file_path, module_name=module_name)
+        return {"status": "success", "result": result}
     except Exception as e:
         return {"status": "error", "message": str(e)}
 

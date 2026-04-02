@@ -622,3 +622,58 @@ class IsaacAdapterV5(IsaacAdapterBase):
             }
         finally:
             sys.stdout, sys.stderr = old_stdout, old_stderr
+
+    def reload_script(self, file_path: str, module_name: Optional[str] = None) -> Dict[str, Any]:
+        import sys
+        import os
+        import io
+        import importlib
+
+        # Auto-add parent directory to sys.path
+        parent_dir = os.path.dirname(os.path.abspath(file_path))
+        if parent_dir not in sys.path:
+            sys.path.insert(0, parent_dir)
+
+        # Capture stdout/stderr
+        old_stdout, old_stderr = sys.stdout, sys.stderr
+        sys.stdout = captured_out = io.StringIO()
+        sys.stderr = captured_err = io.StringIO()
+        try:
+            if module_name:
+                # Reload existing module or import for first time
+                if module_name in sys.modules:
+                    module = importlib.reload(sys.modules[module_name])
+                    msg = f"Module '{module_name}' reloaded successfully"
+                else:
+                    module = importlib.import_module(module_name)
+                    msg = f"Module '{module_name}' imported successfully"
+            else:
+                # Execute file contents (hot-patch)
+                if not os.path.isfile(file_path):
+                    return {"status": "error", "message": f"File not found: {file_path}"}
+                with open(file_path, "r") as f:
+                    code = f.read()
+                import omni
+                import carb
+                from pxr import Usd, UsdGeom, Sdf, Gf
+                local_ns = {"omni": omni, "carb": carb, "Usd": Usd, "UsdGeom": UsdGeom,
+                             "Sdf": Sdf, "Gf": Gf, "__file__": file_path}
+                exec(code, local_ns)
+                msg = f"Script '{os.path.basename(file_path)}' executed successfully"
+
+            return {
+                "status": "success",
+                "message": msg,
+                "stdout": captured_out.getvalue(),
+                "stderr": captured_err.getvalue(),
+            }
+        except Exception as e:
+            return {
+                "status": "error",
+                "message": str(e),
+                "traceback": traceback.format_exc(),
+                "stdout": captured_out.getvalue(),
+                "stderr": captured_err.getvalue(),
+            }
+        finally:
+            sys.stdout, sys.stderr = old_stdout, old_stderr

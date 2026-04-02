@@ -169,3 +169,24 @@ def register_tools(mcp: FastMCP, get_connection: "Callable[[], IsaacConnection]"
             return json.dumps(result, indent=2)
         except Exception as e:
             return json.dumps({"status": "error", "message": str(e)})
+
+    @mcp.tool("reload_script")
+    def reload_script(file_path: str, module_name: Optional[str] = None) -> str:
+        """Reload a Python script or module into Isaac Sim. Auto-adds the file's directory to sys.path.
+
+        If module_name is provided, reloads that module (or imports it if not yet loaded).
+        If only file_path is provided, executes the file contents directly (hot-patch).
+
+        Args:
+            file_path: Path to the Python file on disk.
+            module_name: Optional module name to reload (e.g. 'my_controller').
+        """
+        try:
+            conn = get_connection()
+            params = {"file_path": file_path}
+            if module_name is not None:
+                params["module_name"] = module_name
+            result = conn.send_command("simulation.reload_script", params)
+            return json.dumps(result, indent=2)
+        except Exception as e:
+            return json.dumps({"status": "error", "message": str(e)})
