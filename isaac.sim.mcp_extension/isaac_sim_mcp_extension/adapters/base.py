@@ -263,6 +263,11 @@ class IsaacAdapterBase(ABC):
         ...
 
     @abstractmethod
-    def execute_script(self, code: str) -> Dict[str, Any]:
-        """Execute arbitrary Python code in the Isaac Sim context."""
+    def execute_script(self, code: str, cwd: Optional[str] = None) -> Dict[str, Any]:
+        """Execute arbitrary Python code in the Isaac Sim context.
+
+        Args:
+            code: Python code to execute.
+            cwd: Optional working directory to add to sys.path before execution.
+        """
         ...

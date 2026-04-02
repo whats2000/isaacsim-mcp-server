@@ -81,11 +81,11 @@ def set_physics(adapter: IsaacAdapterBase, gravity: Optional[Sequence[float]] = 
         return {"status": "error", "message": str(e)}
 
 
-def execute_script(adapter: IsaacAdapterBase, code: Optional[str] = None) -> Dict[str, Any]:
+def execute_script(adapter: IsaacAdapterBase, code: Optional[str] = None, cwd: Optional[str] = None) -> Dict[str, Any]:
     try:
         if not code:
             return {"status": "error", "message": "code is required"}
-        result = adapter.execute_script(code)
+        result = adapter.execute_script(code, cwd=cwd)
         return {"status": "success", "result": result}
     except Exception as e:
         return {"status": "error", "message": str(e)}

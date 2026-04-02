@@ -434,13 +434,38 @@ class IsaacAdapterV5(IsaacAdapterBase):
         for _ in range(num_steps):
             omni.kit.app.get_app().update()
 
-    def execute_script(self, code: str) -> Dict[str, Any]:
+    def execute_script(self, code: str, cwd: Optional[str] = None) -> Dict[str, Any]:
+        import sys
+        import io
         import omni
         import carb
         from pxr import Usd, UsdGeom, Sdf, Gf
+
+        # Auto-add cwd to sys.path
+        if cwd and cwd not in sys.path:
+            sys.path.insert(0, cwd)
+
         local_ns = {"omni": omni, "carb": carb, "Usd": Usd, "UsdGeom": UsdGeom, "Sdf": Sdf, "Gf": Gf}
+
+        # Capture stdout/stderr
+        old_stdout, old_stderr = sys.stdout, sys.stderr
+        sys.stdout = captured_out = io.StringIO()
+        sys.stderr = captured_err = io.StringIO()
         try:
             exec(code, local_ns)
-            return {"status": "success", "message": "Script executed successfully"}
+            return {
+                "status": "success",
+                "message": "Script executed successfully",
+                "stdout": captured_out.getvalue(),
+                "stderr": captured_err.getvalue(),
+            }
         except Exception as e:
-            return {"status": "error", "message": str(e), "traceback": traceback.format_exc()}
+            return {
+                "status": "error",
+                "message": str(e),
+                "traceback": traceback.format_exc(),
+                "stdout": captured_out.getvalue(),
+                "stderr": captured_err.getvalue(),
+            }
+        finally:
+            sys.stdout, sys.stderr = old_stdout, old_stderr

@@ -114,16 +114,20 @@ def register_tools(mcp: FastMCP, get_connection: "Callable[[], IsaacConnection]"
             return json.dumps({"status": "error", "message": str(e)})
 
     @mcp.tool("execute_script")
-    def execute_script(code: str) -> str:
+    def execute_script(code: str, cwd: Optional[str] = None) -> str:
         """Execute arbitrary Python code in Isaac Sim. Use as an escape hatch for operations not covered by other tools.
         Always verify connection with get_scene_info before executing. Print the code in chat before running for review.
 
         Args:
             code: Python code to execute in the Isaac Sim context.
+            cwd: Optional working directory to add to sys.path before execution.
         """
         try:
             conn = get_connection()
-            result = conn.send_command("simulation.execute_script", {"code": code})
+            params = {"code": code}
+            if cwd is not None:
+                params["cwd"] = cwd
+            result = conn.send_command("simulation.execute_script", params)
             return json.dumps(result, indent=2)
         except Exception as e:
             return json.dumps({"status": "error", "message": str(e)})
