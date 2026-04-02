@@ -15,7 +15,7 @@ fi
 
 if [[ ! -f "$EXTENSION_TOML" ]]; then
   echo "Error: extension manifest not found at: $EXTENSION_TOML" >&2
-  echo "Run this script from inside the isaac-sim-mcp checkout." >&2
+  echo "Run this script from inside the isaacsim-mcp-server checkout." >&2
   exit 1
 fi
 

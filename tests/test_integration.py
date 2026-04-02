@@ -26,7 +26,7 @@
 Prerequisites:
     1. Isaac Sim 5.1.0 must be running with the MCP extension enabled:
        cd ~/isaacsim
-       ./isaac-sim.sh --ext-folder ~/Documents/GitHub/isaac-sim-mcp/ --enable isaac.sim.mcp_extension
+       ./isaac-sim.sh --ext-folder ~/Documents/GitHub/isaacsim-mcp-server/ --enable isaac.sim.mcp_extension
 
     2. The extension must be listening on localhost:8766
 
