@@ -251,6 +251,7 @@ class IsaacAdapterV5(IsaacAdapterBase):
         from isaacsim.core.prims import SingleArticulation
         from isaacsim.core.utils.types import ArticulationAction
         art = SingleArticulation(prim_path=prim_path)
+        art.initialize()
         action = ArticulationAction(
             joint_positions=np.array(positions),
             joint_indices=np.array(joint_indices) if joint_indices else None,
@@ -282,6 +283,7 @@ class IsaacAdapterV5(IsaacAdapterBase):
         # Get runtime target positions (from applied actions, not USD defaults)
         runtime_targets = []
         try:
+            art.initialize()
             applied_action = art.get_applied_action()
             if applied_action and applied_action.joint_positions is not None:
                 runtime_targets = applied_action.joint_positions.tolist()
