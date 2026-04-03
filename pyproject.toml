@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "isaacsim-mcp-server"
 dynamic = ["version"]
-description = "Control NVIDIA Isaac Sim robotics simulator through MCP -- 39 tools for scene management, robot control, sensors, and simulation"
+description = "Control NVIDIA Isaac Sim robotics simulator through MCP -- 40 tools for scene management, robot control, sensors, and simulation"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.10"
