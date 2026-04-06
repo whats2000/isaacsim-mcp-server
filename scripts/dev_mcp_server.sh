@@ -81,7 +81,23 @@ hot_reload_extension() {
 import socket, json, sys
 
 reload_code = '''
-import importlib
+import importlib, os, glob
+
+# Clear stale .pyc for ALL loaded isaac_sim_mcp_extension modules so
+# importlib.reload() picks up the latest source.
+for mod_name, mod in list(__import__("sys").modules.items()):
+    if mod_name.startswith("isaac_sim_mcp_extension"):
+        src = getattr(mod, "__file__", None)
+        if src and src.endswith(".py"):
+            cache_dir = os.path.join(os.path.dirname(src), "__pycache__")
+            base = os.path.splitext(os.path.basename(src))[0]
+            for pyc in glob.glob(os.path.join(cache_dir, base + ".*.pyc")):
+                try:
+                    os.remove(pyc)
+                except OSError:
+                    pass
+importlib.invalidate_caches()
+
 import isaac_sim_mcp_extension.adapters.base as base_mod
 import isaac_sim_mcp_extension.adapters.v5 as v5_mod
 import isaac_sim_mcp_extension.adapters as adapters_init
@@ -93,6 +109,7 @@ import isaac_sim_mcp_extension.handlers.simulation as simulation_mod
 import isaac_sim_mcp_extension.handlers.sensors as sensors_mod
 import isaac_sim_mcp_extension.handlers.materials as materials_mod
 import isaac_sim_mcp_extension.handlers.lighting as lighting_mod
+import isaac_sim_mcp_extension.handlers.graphs as graphs_mod
 import isaac_sim_mcp_extension.handlers as handlers_init
 
 # Reload adapter layer first, then handlers, then __init__ modules
@@ -107,6 +124,7 @@ importlib.reload(simulation_mod)
 importlib.reload(sensors_mod)
 importlib.reload(materials_mod)
 importlib.reload(lighting_mod)
+importlib.reload(graphs_mod)
 importlib.reload(handlers_init)
 
 # Re-register all handlers with a fresh adapter
@@ -122,6 +140,36 @@ for obj in gc.get_objects():
         obj.__dict__[\"_adapter\"] = adapter
         obj._registry.clear()
         register_all_handlers(obj._registry, adapter)
+
+        # Wrap reload_script to clear stale .pyc before importlib.reload()
+        _orig_reload = adapter.reload_script
+        def _patched_reload(file_path, module_name=None, _orig=_orig_reload):
+            import importlib as _il, os as _os, glob as _gl, sys as _sys
+            if module_name and module_name in _sys.modules:
+                src = getattr(_sys.modules[module_name], \"__file__\", None)
+                if src and src.endswith(\".py\"):
+                    cache_dir = _os.path.join(_os.path.dirname(src), \"__pycache__\")
+                    base = _os.path.splitext(_os.path.basename(src))[0]
+                    for pyc in _gl.glob(_os.path.join(cache_dir, base + \".*.pyc\")):
+                        try:
+                            _os.remove(pyc)
+                        except OSError:
+                            pass
+                _il.invalidate_caches()
+            elif file_path:
+                abs_path = _os.path.abspath(file_path)
+                if abs_path.endswith(\".py\"):
+                    cache_dir = _os.path.join(_os.path.dirname(abs_path), \"__pycache__\")
+                    base = _os.path.splitext(_os.path.basename(abs_path))[0]
+                    for pyc in _gl.glob(_os.path.join(cache_dir, base + \".*.pyc\")):
+                        try:
+                            _os.remove(pyc)
+                        except OSError:
+                            pass
+                    _il.invalidate_caches()
+            return _orig(file_path, module_name=module_name)
+        adapter.reload_script = _patched_reload
+
         print(f\"Hot-reloaded {len(obj._registry)} handlers\")
         break
 else:
