@@ -68,6 +68,7 @@ def create_physics(
         floor_path = "/World/groundPlane"
         adapter.create_prim(floor_path, "Plane")
         from pxr import UsdPhysics
+
         stage = adapter.get_stage()
         gp = stage.GetPrimAtPath(floor_path)
         if gp.IsValid() and not gp.HasAPI(UsdPhysics.CollisionAPI):

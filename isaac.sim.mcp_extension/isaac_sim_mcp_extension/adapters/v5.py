@@ -264,6 +264,7 @@ class IsaacAdapterV5(IsaacAdapterBase):
 
         # Compute world-space position for bounding box
         from pxr import Usd
+
         world_transform = xformable.ComputeLocalToWorldTransform(Usd.TimeCode.Default())
         translation = world_transform.ExtractTranslation()
         pos = [float(translation[0]), float(translation[1]), float(translation[2])]

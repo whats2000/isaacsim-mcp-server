@@ -218,7 +218,7 @@ def edit_action_graph(
                         }
 
                     node_path = attr_spec[:dot_idx]
-                    attr_name = attr_spec[dot_idx + 1:]
+                    attr_name = attr_spec[dot_idx + 1 :]
 
                     node = graph.get_node(node_path)
                     if node is None or not node.is_valid():
