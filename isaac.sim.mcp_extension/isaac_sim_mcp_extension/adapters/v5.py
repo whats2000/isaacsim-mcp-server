@@ -263,8 +263,8 @@ class IsaacAdapterV5(IsaacAdapterBase):
             raise ValueError(f"Unsupported prim type for size calculation: {prim_type}")
 
         # Compute world-space position for bounding box
-        from pxr import Gf
-        world_transform = xformable.ComputeLocalToWorldTransform(Gf.TimeCode(0))
+        from pxr import Usd
+        world_transform = xformable.ComputeLocalToWorldTransform(Usd.TimeCode.Default())
         translation = world_transform.ExtractTranslation()
         pos = [float(translation[0]), float(translation[1]), float(translation[2])]
         half = [d / 2.0 for d in dims]
