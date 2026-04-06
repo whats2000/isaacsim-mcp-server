@@ -837,9 +837,29 @@ class IsaacAdapterV5(IsaacAdapterBase):
 
     # ── Simulation ─────────────────────────────────────────
 
+    def _ensure_physics_world(self) -> None:
+        """Ensure a World with initialised physics exists.
+
+        Without this, ScriptNode scripts that call
+        ``SingleArticulation.initialize()`` crash because
+        ``physics_sim_view`` is None.
+        """
+        from isaacsim.core.api import World
+
+        world = World.instance()
+        if world is None:
+            world = World(
+                physics_dt=1.0 / 60.0,
+                rendering_dt=1.0 / 60.0,
+                stage_units_in_meters=1.0,
+            )
+        if world.physics_sim_view is None:
+            world.initialize_physics()
+
     def play(self) -> None:
         import omni.timeline
 
+        self._ensure_physics_world()
         omni.timeline.get_timeline_interface().play()
 
     def pause(self) -> None:

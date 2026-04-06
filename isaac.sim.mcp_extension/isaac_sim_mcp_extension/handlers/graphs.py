@@ -52,6 +52,11 @@ def create_action_graph(
     try:
         import omni.graph.core as og
 
+        # Ensure physics is ready so ScriptNode scripts can call
+        # SingleArticulation.initialize() — even when the user
+        # presses Play from the Isaac Sim UI.
+        adapter._ensure_physics_world()
+
         # ── script_file shortcut: create standard ScriptNode graph ─
         if script_file is not None:
             nodes = [
