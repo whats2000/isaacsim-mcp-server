@@ -18,7 +18,8 @@ APPROACH_HEIGHT = 0.15
 # Fingers are ~4.5cm above TCP. For the fingers to straddle the
 # cube center, TCP must go to cube_center_z or slightly below.
 GRASP_Z_OFFSET = -0.005  # TCP goes 5mm below cube center
-PLACE_OFFSET_Y = 0.4
+# Table2 center Y (0.35) minus Table1 center Y (-0.15) = 0.5
+PLACE_OFFSET_Y = 0.5
 CONVERGE_THRESH = 0.035
 CONVERGE_FRAMES = 10
 GRIPPER_OPEN = 0.04
