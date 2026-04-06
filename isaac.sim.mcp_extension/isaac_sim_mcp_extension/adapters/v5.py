@@ -340,11 +340,45 @@ class IsaacAdapterV5(IsaacAdapterBase):
 
     def get_robot_joint_info(self, prim_path: str) -> Dict[str, Any]:
         from isaacsim.core.prims import SingleArticulation
+        from pxr import UsdPhysics
 
         art = SingleArticulation(prim_path=prim_path)
+        joint_names = art.dof_names if art.dof_names else []
+        num_dof = art.num_dof if art.num_dof else 0
+
+        stage = self.get_stage()
+        joint_limits = []
+        for jname in joint_names:
+            limit_entry: Dict[str, Any] = {"name": jname}
+            for prim in stage.Traverse():
+                if not str(prim.GetPath()).startswith(prim_path):
+                    continue
+                if prim.GetName() != jname:
+                    continue
+                rev = UsdPhysics.RevoluteJoint(prim)
+                if rev and rev.GetAxisAttr().Get() is not None:
+                    lo = rev.GetLowerLimitAttr().Get()
+                    hi = rev.GetUpperLimitAttr().Get()
+                    limit_entry["type"] = "revolute"
+                    limit_entry["lower"] = float(lo) if lo is not None else None
+                    limit_entry["upper"] = float(hi) if hi is not None else None
+                    limit_entry["units"] = "degrees"
+                    break
+                pris = UsdPhysics.PrismaticJoint(prim)
+                if pris and pris.GetAxisAttr().Get() is not None:
+                    lo = pris.GetLowerLimitAttr().Get()
+                    hi = pris.GetUpperLimitAttr().Get()
+                    limit_entry["type"] = "prismatic"
+                    limit_entry["lower"] = float(lo) if lo is not None else None
+                    limit_entry["upper"] = float(hi) if hi is not None else None
+                    limit_entry["units"] = "meters"
+                    break
+            joint_limits.append(limit_entry)
+
         return {
-            "joint_names": art.dof_names if art.dof_names else [],
-            "num_dof": art.num_dof if art.num_dof else 0,
+            "joint_names": joint_names,
+            "num_dof": num_dof,
+            "joint_limits": joint_limits,
         }
 
     def set_joint_positions(
