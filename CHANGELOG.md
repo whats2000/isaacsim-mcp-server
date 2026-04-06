@@ -5,11 +5,35 @@ All notable changes to the isaacsim-mcp-server project will be documented in thi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.5.0] - 2026-04-06
+
+### Added
+- **Dimensional data in responses**: `create_object` now returns `actual_size` [x, y, z] in meters and `bounding_box` (min/max world-space corners)
+- **Prim size inspection**: `get_prim_info` returns `actual_size` for geometric prims (Cube, Sphere, Cylinder, Cone, Capsule)
+- **Inline joint info**: `create_robot` now returns `joint_names` and `num_dof` in the response, eliminating the need for a follow-up `get_robot_info` call
+- **Joint limits**: `get_robot_info` now returns `joint_limits` with type (revolute/prismatic), lower/upper limits, and units per joint
+- **Comprehensive server instructions**: MCP `instructions` field now includes workflow guidance for scene setup, debug loop (step-and-observe), controller development, and tool priority
+- `get_prim_actual_size` adapter method for computing prim dimensions from USD geometry attributes and scale
 
 ### Changed
+- **Tool docstrings rewritten** with workflow guidance:
+  - `step_simulation` promoted as the primary debug tool with typical debug loop example
+  - `execute_script` reframed as escape hatch with explicit list of preferred alternatives
+  - `reload_script` positioned as the controller loading workflow
+  - `get_joint_config`, `get_physics_state`, `get_isaac_logs` marked as diagnostic tools with when-to-call guidance
+  - `set_joint_positions`, `get_joint_positions` now document units (radians/meters)
+  - `create_object` documents default primitive sizes and scale behavior
+- Replaced `asset_creation_strategy` prompt with inline `instructions` covering MCP vs Script/Action Graph scope
 - Updated package name and version in extension.toml
 - Added new application icon and social badge image
+
+### Fixed
+- Dev hot-reload script: bypass pybind11 `__setattr__` on `omni.ext.IExt` subclasses using `__dict__` assignment
+- Dev hot-reload script: use `isinstance(obj, MCPExtension)` instead of fragile `hasattr` checks that matched wrong objects
+- Dev hot-reload script: clear stale `.pyc` files before `importlib.reload()` to ensure fresh source is loaded
+- Use `Usd.TimeCode.Default()` instead of non-existent `Gf.TimeCode(0)` in `get_prim_actual_size`
+- World-space (not local-space) transform for bounding box computation
+- Cylinder/Cone axis attribute respected when computing dimensions
 
 ## [0.4.1] - 2026-04-02
 
