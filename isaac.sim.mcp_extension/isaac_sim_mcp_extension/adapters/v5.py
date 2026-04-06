@@ -224,18 +224,32 @@ class IsaacAdapterV5(IsaacAdapterBase):
             geom = UsdGeom.Cylinder(prim)
             radius_attr = geom.GetRadiusAttr()
             height_attr = geom.GetHeightAttr()
+            axis_attr = geom.GetAxisAttr()
             radius = float(radius_attr.Get()) if radius_attr and radius_attr.Get() is not None else 0.5
             height = float(height_attr.Get()) if height_attr and height_attr.Get() is not None else 1.0
+            axis = axis_attr.Get() if axis_attr and axis_attr.Get() is not None else "Z"
             diameter = radius * 2.0
-            dims = [diameter * scale[0], diameter * scale[1], height * scale[2]]
+            if axis == "X":
+                dims = [height * scale[0], diameter * scale[1], diameter * scale[2]]
+            elif axis == "Y":
+                dims = [diameter * scale[0], height * scale[1], diameter * scale[2]]
+            else:  # Z (default)
+                dims = [diameter * scale[0], diameter * scale[1], height * scale[2]]
         elif prim_type == "Cone":
             geom = UsdGeom.Cone(prim)
             radius_attr = geom.GetRadiusAttr()
             height_attr = geom.GetHeightAttr()
+            axis_attr = geom.GetAxisAttr()
             radius = float(radius_attr.Get()) if radius_attr and radius_attr.Get() is not None else 0.5
             height = float(height_attr.Get()) if height_attr and height_attr.Get() is not None else 1.0
+            axis = axis_attr.Get() if axis_attr and axis_attr.Get() is not None else "Z"
             diameter = radius * 2.0
-            dims = [diameter * scale[0], diameter * scale[1], height * scale[2]]
+            if axis == "X":
+                dims = [height * scale[0], diameter * scale[1], diameter * scale[2]]
+            elif axis == "Y":
+                dims = [diameter * scale[0], height * scale[1], diameter * scale[2]]
+            else:  # Z (default)
+                dims = [diameter * scale[0], diameter * scale[1], height * scale[2]]
         elif prim_type == "Capsule":
             geom = UsdGeom.Capsule(prim)
             radius_attr = geom.GetRadiusAttr()
@@ -246,10 +260,12 @@ class IsaacAdapterV5(IsaacAdapterBase):
             diameter = radius * 2.0
             dims = [diameter * scale[0], diameter * scale[1], total_height * scale[2]]
         else:
-            dims = [scale[0], scale[1], scale[2]]
+            raise ValueError(f"Unsupported prim type for size calculation: {prim_type}")
 
-        # Compute position for bounding box
-        translation = local_transform.ExtractTranslation()
+        # Compute world-space position for bounding box
+        from pxr import Gf
+        world_transform = xformable.ComputeLocalToWorldTransform(Gf.TimeCode(0))
+        translation = world_transform.ExtractTranslation()
         pos = [float(translation[0]), float(translation[1]), float(translation[2])]
         half = [d / 2.0 for d in dims]
         bbox_min = [pos[0] - half[0], pos[1] - half[1], pos[2] - half[2]]
