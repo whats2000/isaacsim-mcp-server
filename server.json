@@ -1,17 +1,17 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.whats2000/isaacsim-mcp-server",
-  "description": "Control NVIDIA Isaac Sim robotics simulator through MCP with 41 tools",
+  "description": "Control NVIDIA Isaac Sim robotics simulator through MCP with 42 tools",
   "repository": {
     "url": "https://github.com/whats2000/isaacsim-mcp-server",
     "source": "github"
   },
-  "version": "0.4.1",
+  "version": "0.5.1",
   "packages": [
     {
       "registryType": "pypi",
       "identifier": "isaacsim-mcp-server",
-      "version": "0.4.1",
+      "version": "0.5.1",
       "transport": {
         "type": "stdio"
       },

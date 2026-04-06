@@ -1,5 +1,5 @@
 name: isaacsim-mcp-server
-description: Control NVIDIA Isaac Sim robotics simulator through MCP -- 40 tools for scene management, robot control, sensors, and simulation
+description: Control NVIDIA Isaac Sim robotics simulator through MCP -- 42 tools for scene management, robot control, sensors, and simulation
 license: MIT
 homepage: https://github.com/whats2000/isaacsim-mcp-server
 
