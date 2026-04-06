@@ -358,6 +358,8 @@ This creates a launcher that auto-assigns ports, waits for the extension socket,
 A ready-to-run demo at `demo/franka_pick_place.py` using RMPflow for motion planning:
 
 ```text
+Please use the Isaac MCP tool complete this:
+
 Create a physics scene with a ground plane, then spawn a Franka FR3 robot at the origin.
 
 Add two textured tables with a gap along X. Place a small textured cube with physics enabled on top of the first table.
