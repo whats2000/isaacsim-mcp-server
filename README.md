@@ -18,7 +18,7 @@ Connect any MCP-compatible IDE (Cursor, VS Code, Claude Code, Windsurf, JetBrain
 
 ## Highlights
 
-- **40 tools** across 8 categories -- scene, objects, lighting, robots, sensors, materials, assets, simulation
+- **41 tools** across 9 categories -- scene, objects, lighting, robots, sensors, materials, assets, simulation, graphs
 - **107+ robots** auto-discovered from the Isaac Sim asset library (Franka, UR, Unitree, Boston Dynamics, and more)
 - **Step-and-observe** debugging -- step the simulation and inspect prim positions, joint states, and physics in one call
 - **Hot-reload** -- iterate on Python controllers without restarting Isaac Sim
@@ -232,7 +232,7 @@ Handlers -> Adapter -> Isaac Sim 5.1.0 APIs
 
 ## Tools
 
-40 tools across 8 categories:
+41 tools across 9 categories:
 
 | Category | Count | What you can do |
 |----------|------:|-----------------|
@@ -243,6 +243,7 @@ Handlers -> Adapter -> Isaac Sim 5.1.0 APIs
 | **Sensors** | 4 | Create cameras/LiDAR, capture images, get point clouds |
 | **Materials** | 2 | Create and apply materials |
 | **Assets** | 4 | Import URDF, load/search USD, generate 3D models |
+| **Graphs** | 1 | Build Action Graphs programmatically (OnPlaybackTick, ScriptNode, etc.) |
 | **Simulation** | 11 | Play/pause/stop/step, execute Python, inspect physics, hot-reload |
 
 <details>
@@ -261,6 +262,8 @@ Handlers -> Adapter -> Isaac Sim 5.1.0 APIs
 **Materials:** `create_material` `apply_material`
 
 **Assets:** `import_urdf` `load_usd` `search_usd` `generate_3d`
+
+**Graphs:** `create_action_graph`
 
 **Simulation:** `play_simulation` `pause_simulation` `stop_simulation` `step_simulation` `set_physics_params` `get_isaac_logs` `get_simulation_state` `get_physics_state` `get_joint_config` `execute_script` `reload_script`
 

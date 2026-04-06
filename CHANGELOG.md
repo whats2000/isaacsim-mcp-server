@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.5.0] - 2026-04-06
 
 ### Added
+- **`create_action_graph` tool**: Build OmniGraph Action Graphs programmatically (nodes, connections, attribute values) via `og.Controller.edit()` — no more raw `execute_script` calls for OnPlaybackTick → ScriptNode wiring
+- **Drive config warnings**: `get_joint_config` and `create_robot` now return a `warnings` array when any joint has `stiffness=0` and `damping=0` (e.g. FR3 `finger_joint2` broken drive)
 - **Dimensional data in responses**: `create_object` now returns `actual_size` [x, y, z] in meters and `bounding_box` (min/max world-space corners)
 - **Prim size inspection**: `get_prim_info` returns `actual_size` for geometric prims (Cube, Sphere, Cylinder, Cone, Capsule)
 - **Inline joint info**: `create_robot` now returns `joint_names` and `num_dof` in the response, eliminating the need for a follow-up `get_robot_info` call
@@ -28,6 +30,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added new application icon and social badge image
 
 ### Fixed
+- **Ground plane collision**: `create_physics_scene` now applies `UsdPhysics.CollisionAPI` to the ground plane — objects no longer fall through the floor
+- **Stale `.pyc` in `reload_script`**: Dev script now clears bytecode cache before `importlib.reload()` for both extension and user modules, preventing stale code from loading
+- **Orphaned subscriptions**: `reload_script` exec() mode now cleans up subscriptions from previous runs before re-executing
 - Dev hot-reload script: bypass pybind11 `__setattr__` on `omni.ext.IExt` subclasses using `__dict__` assignment
 - Dev hot-reload script: use `isinstance(obj, MCPExtension)` instead of fragile `hasattr` checks that matched wrong objects
 - Dev hot-reload script: clear stale `.pyc` files before `importlib.reload()` to ensure fresh source is loaded
