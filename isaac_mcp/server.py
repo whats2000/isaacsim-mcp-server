@@ -80,7 +80,9 @@ Use create_action_graph to build Action Graphs programmatically (OnPlaybackTick 
 1. get_scene_info — verify connection
 2. create_physics_scene — physics + ground plane
 3. create_robot / create_object / load_environment — populate scene
-4. get_prim_info — verify positions and actual sizes
+   - create_robot uses fuzzy matching: call list_available_robots first to get exact keys
+   - Robot keys are lowercase, no spaces (e.g. "frankafr3", not "franka fr3")
+4. get_prim_info — verify positions and actual sizes BEFORE writing controller scripts
 
 ### Debug Loop (step-and-observe)
 1. set_joint_positions — command the robot
@@ -110,9 +112,91 @@ For controllers that run every tick via Action Graph ScriptNode:
   1. create_action_graph with OnPlaybackTick → ScriptNode nodes
   2. edit_action_graph to set ScriptNode.inputs:usePath=true and ScriptNode.inputs:scriptPath
 
-The script file must define setup(db) and/or compute(db) functions.
 To reload after editing, call edit_action_graph with the same scriptPath — it auto-resets
 state:omni_initialized to force the ScriptNode to re-read the file.
+
+**IMPORTANT**: The ScriptNode fires ONCE during create_action_graph (before Play starts).
+Any objects initialised then (robot, World) become stale when Play begins. Scripts must
+handle re-initialisation — see the WARMUP pattern below.
+
+### CRITICAL: ScriptNode Script Patterns
+
+ScriptNode scripts MUST define `setup(db)` and/or `compute(db)` functions.
+This is the "proper" mode where module-level globals, function definitions,
+and list comprehensions all work correctly.
+
+**DO NOT use "legacy mode"** (no compute(db) function). Legacy mode runs the
+entire script via exec() each tick with severe scoping issues:
+- Variables go into compute() locals, LOST every tick
+- Function defs and list comprehensions can't access exec locals
+- State must be stored in builtins (fragile and error-prone)
+Always define setup(db) and compute(db).
+
+**Recommended structure:**
+```python
+import numpy as np
+import omni.timeline
+
+# Module-level globals for persistent state
+_robot = None
+_state = "IDLE"
+_tl_sub = None
+_world = None
+
+def _on_tl(event):
+    # ESSENTIAL: Reset state on STOP so next Play re-initialises cleanly.
+    # Without this, pressing Stop → Play leaves stale robot/World objects.
+    global _robot, _state, _world
+    if event.type == int(omni.timeline.TimelineEventType.STOP):
+        _robot = None
+        _state = "IDLE"
+        if _world is not None:
+            _world.clear_instance()
+            _world = None
+
+def setup(db=None):
+    # Runs once on first evaluation. Subscribe to timeline STOP.
+    global _tl_sub
+    if _tl_sub is None:
+        tl = omni.timeline.get_timeline_interface()
+        _tl_sub = tl.get_timeline_event_stream().create_subscription_to_pop(_on_tl)
+
+def compute(db=None):
+    # Runs every tick. Use global keyword for mutable state.
+    global _robot, _state, _world
+    ...
+    return True
+```
+
+**Physics initialisation — WARMUP pattern**: `SingleArticulation.initialize()`
+requires `World.physics_sim_view` to be non-None. When the user presses Play
+from the Isaac Sim UI, physics needs a few frames to settle before the tensor
+API is available. Use a WARMUP state that skips the first ~30 frames, then
+creates a World and calls `initialize_physics()`:
+```python
+WARMUP_FRAMES = 30
+
+def compute(db=None):
+    global _state, _frame, _world, _robot
+    if _state == "WARMUP":
+        _frame += 1
+        if _frame >= WARMUP_FRAMES:
+            from isaacsim.core.api import World
+            _world = World.instance()
+            if _world is None:
+                _world = World(physics_dt=1/60.0, stage_units_in_meters=1.0)
+            _world.initialize_physics()
+            # Now SingleArticulation.initialize() will work
+            from isaacsim.core.prims import SingleArticulation
+            _robot = SingleArticulation(prim_path="/World/MyRobot", name="my_robot")
+            _robot.initialize()
+            _state = "RUNNING"
+        return True
+    # ... rest of controller logic
+```
+The adapter's create_action_graph() and play() also call _ensure_physics_world()
+which helps when using MCP tools, but the WARMUP pattern is essential for UI Play.
+
 
 ### Tool Priority
 Always prefer named tools over execute_script:

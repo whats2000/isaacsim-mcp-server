@@ -12,10 +12,13 @@
 - For physics simulation, avoid using simulation_context to run simulations in the main thread
 - Use the World class with async methods for initializing physics and running simulations
 - When needed, use my_world.play() followed by multiple step_async() calls to wait for physics to stabilize
+- SingleArticulation.initialize() requires World.physics_sim_view to be non-None.
+  The adapter's play() and create_action_graph() call _ensure_physics_world() to guarantee this.
+  When user presses Play from UI, the script must do its own World + initialize_physics() in a warmup phase.
 
 # Robot Creation Rules
 - Before creating a robot, verify availability of connection with get_scene_info()
-- Available robot types: "franka", "jetbot", "carter", "g1", "go1"
+- Available robot types: "franka", "frankafr3", "jetbot", "carter", "g1", "go1" (use list_available_robots for full list)
 - Position robots using their appropriate parameters
 - For custom robot configurations, use execute_script() only when create_robot() is insufficient
 
@@ -29,4 +32,29 @@
 - Use World class instead of SimulationContext when possible
 - Initialize physics before trying to control any articulations
 - When controlling robots, make sure to step the physics at least once before interaction
-- For robot joint control, first initialize the articulation, then get the controller 
+- For robot joint control, first initialize the articulation, then get the controller
+
+# ScriptNode Script Rules (CRITICAL)
+#
+# ALWAYS define setup(db) and compute(db) functions. This is the "proper" mode
+# where module-level globals, function definitions, and list comprehensions
+# all work correctly.
+#
+# Structure:
+#   - Module-level globals for persistent state (_robot = None, _state = "IDLE")
+#   - setup(db): runs once, subscribe to timeline STOP to reset state
+#   - compute(db): runs every tick, use `global` keyword for mutable state
+#   - _on_tl(event): reset globals on TimelineEventType.STOP so next Play re-inits
+#
+# Physics init inside compute():
+#   - Use a WARMUP state (skip first ~30 frames) before calling World.initialize_physics()
+#   - This ensures physics is ready even when user presses Play from Isaac Sim UI
+#   - Pattern: _world = World.instance() or World(...); _world.initialize_physics()
+#
+# DO NOT use "legacy mode" (no compute(db) function). Legacy mode runs the entire
+# script via exec() each tick, causing:
+#   - Variables lost every tick (go into compute() locals, not module globals)
+#   - Function defs can't access exec locals (__globals__ mismatch)
+#   - List comprehensions can't access exec locals (Python 3 scoping)
+# If you must use legacy mode, store ALL state in builtins._my_data dict.
+
