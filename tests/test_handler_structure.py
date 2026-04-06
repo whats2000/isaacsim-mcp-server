@@ -87,6 +87,8 @@ def test_adapter_base_has_all_abstract_methods():
         "get_physics_state",
         "get_joint_config",
         "reload_script",
+        # Dimensional data (issue #2)
+        "get_prim_actual_size",
     }
     assert methods == expected, f"Missing: {expected - methods}, Extra: {methods - expected}"
 

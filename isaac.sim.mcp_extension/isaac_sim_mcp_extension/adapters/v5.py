@@ -174,12 +174,88 @@ class IsaacAdapterV5(IsaacAdapterBase):
             raise ValueError(f"Prim not found: {prim_path}")
         transform = self.get_prim_transform(prim_path)
         children = [str(c.GetPath()) for c in prim.GetAllChildren()]
-        return {
+        info: Dict[str, Any] = {
             "path": prim_path,
             "type": prim.GetTypeName(),
             "transform": transform,
             "children": children,
         }
+        if prim.GetTypeName() in ("Cube", "Sphere", "Cylinder", "Cone", "Capsule"):
+            try:
+                actual_size, _bbox = self.get_prim_actual_size(prim_path)
+                info["actual_size"] = actual_size
+            except Exception:
+                pass
+        return info
+
+    def get_prim_actual_size(self, prim_path: str) -> Tuple[List[float], Tuple[List[float], List[float]]]:
+        """Return actual dimensions and bounding box for a geometric prim."""
+        from pxr import UsdGeom
+
+        stage = self.get_stage()
+        prim = stage.GetPrimAtPath(prim_path)
+        if not prim.IsValid():
+            raise ValueError(f"Prim not found: {prim_path}")
+
+        prim_type = prim.GetTypeName()
+
+        # Read scale from xform
+        xformable = UsdGeom.Xformable(prim)
+        local_transform = xformable.GetLocalTransformation()
+        # Extract scale from the matrix diagonal (assuming uniform or axis-aligned scale)
+        scale = [
+            float(local_transform.GetRow3(0).GetLength()),
+            float(local_transform.GetRow3(1).GetLength()),
+            float(local_transform.GetRow3(2).GetLength()),
+        ]
+
+        if prim_type == "Cube":
+            geom = UsdGeom.Cube(prim)
+            size_attr = geom.GetSizeAttr()
+            size = float(size_attr.Get()) if size_attr and size_attr.Get() is not None else 1.0
+            dims = [size * scale[0], size * scale[1], size * scale[2]]
+        elif prim_type == "Sphere":
+            geom = UsdGeom.Sphere(prim)
+            radius_attr = geom.GetRadiusAttr()
+            radius = float(radius_attr.Get()) if radius_attr and radius_attr.Get() is not None else 0.5
+            diameter = radius * 2.0
+            dims = [diameter * scale[0], diameter * scale[1], diameter * scale[2]]
+        elif prim_type == "Cylinder":
+            geom = UsdGeom.Cylinder(prim)
+            radius_attr = geom.GetRadiusAttr()
+            height_attr = geom.GetHeightAttr()
+            radius = float(radius_attr.Get()) if radius_attr and radius_attr.Get() is not None else 0.5
+            height = float(height_attr.Get()) if height_attr and height_attr.Get() is not None else 1.0
+            diameter = radius * 2.0
+            dims = [diameter * scale[0], diameter * scale[1], height * scale[2]]
+        elif prim_type == "Cone":
+            geom = UsdGeom.Cone(prim)
+            radius_attr = geom.GetRadiusAttr()
+            height_attr = geom.GetHeightAttr()
+            radius = float(radius_attr.Get()) if radius_attr and radius_attr.Get() is not None else 0.5
+            height = float(height_attr.Get()) if height_attr and height_attr.Get() is not None else 1.0
+            diameter = radius * 2.0
+            dims = [diameter * scale[0], diameter * scale[1], height * scale[2]]
+        elif prim_type == "Capsule":
+            geom = UsdGeom.Capsule(prim)
+            radius_attr = geom.GetRadiusAttr()
+            height_attr = geom.GetHeightAttr()
+            radius = float(radius_attr.Get()) if radius_attr and radius_attr.Get() is not None else 0.5
+            height = float(height_attr.Get()) if height_attr and height_attr.Get() is not None else 1.0
+            total_height = height + 2.0 * radius
+            diameter = radius * 2.0
+            dims = [diameter * scale[0], diameter * scale[1], total_height * scale[2]]
+        else:
+            dims = [scale[0], scale[1], scale[2]]
+
+        # Compute position for bounding box
+        translation = local_transform.ExtractTranslation()
+        pos = [float(translation[0]), float(translation[1]), float(translation[2])]
+        half = [d / 2.0 for d in dims]
+        bbox_min = [pos[0] - half[0], pos[1] - half[1], pos[2] - half[2]]
+        bbox_max = [pos[0] + half[0], pos[1] + half[1], pos[2] + half[2]]
+
+        return dims, (bbox_min, bbox_max)
 
     # ── Robots ─────────────────────────────────────────────
 

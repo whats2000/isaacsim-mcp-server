@@ -106,6 +106,18 @@ class IsaacAdapterBase(ABC):
         """Return detailed info about a prim (type, transform, properties)."""
         ...
 
+    @abstractmethod
+    def get_prim_actual_size(self, prim_path: str) -> Tuple[List[float], Tuple[List[float], List[float]]]:
+        """Return actual dimensions and bounding box for a geometric prim.
+
+        Returns:
+            A tuple of (actual_size, (bbox_min, bbox_max)) where:
+            - actual_size: [x, y, z] dimensions in meters (default_size * scale)
+            - bbox_min: [x, y, z] world-space minimum corner
+            - bbox_max: [x, y, z] world-space maximum corner
+        """
+        ...
+
     # ── Robots ─────────────────────────────────────────────
 
     @abstractmethod
