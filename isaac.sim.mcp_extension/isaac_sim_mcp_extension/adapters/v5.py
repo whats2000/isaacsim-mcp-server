@@ -985,6 +985,7 @@ class IsaacAdapterV5(IsaacAdapterBase):
         sys.stdout = captured_out = io.StringIO()
         sys.stderr = captured_err = io.StringIO()
         try:
+            self._ensure_physics_world()
             exec(code, local_ns)
             return {
                 "status": "success",
@@ -1060,6 +1061,7 @@ class IsaacAdapterV5(IsaacAdapterBase):
                     "Gf": Gf,
                     "__file__": file_path,
                 }
+                self._ensure_physics_world()
                 exec(code, local_ns)
                 # Track namespace so we can clean up subscriptions on next reload
                 self._exec_namespaces[abs_path] = local_ns
