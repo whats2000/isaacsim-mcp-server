@@ -38,9 +38,14 @@ def register_tools(mcp: FastMCP, get_connection: "Callable[[], IsaacConnection]"
     def create_robot(
         robot_type: str = "franka", position: Optional[List[float]] = None, name: Optional[str] = None
     ) -> str:
-        """Create a robot in the scene. Supports fuzzy matching — e.g. "franka", "spot", "g1", "go1".
-        Call list_available_robots first to see all available robots discovered from the Isaac Sim asset server.
+        """Create a robot in the scene from the Isaac Sim asset library.
+
+        Supports fuzzy matching — e.g. "franka", "spot", "g1", "go1".
+        Call list_available_robots first to see all available robots.
         Call create_physics_scene before creating robots.
+
+        Returns prim_path, robot_key, joint_names, and num_dof so you can
+        immediately use set_joint_positions without a follow-up get_robot_info call.
 
         Args:
             robot_type: Robot name or search term. Fuzzy matched against available robots.
@@ -83,7 +88,11 @@ def register_tools(mcp: FastMCP, get_connection: "Callable[[], IsaacConnection]"
 
     @mcp.tool("get_robot_info")
     def get_robot_info(prim_path: str) -> str:
-        """Get joint names, DOF count, and current positions for a robot.
+        """Get robot joint information including names, DOF count, joint types, and limits.
+
+        Call this after create_robot to understand the robot's kinematic structure.
+        Returns joint names ordered by DOF index, joint types (revolute/prismatic),
+        and joint limits (degrees for revolute, meters for prismatic).
 
         Args:
             prim_path: The prim path of the robot.
@@ -99,7 +108,12 @@ def register_tools(mcp: FastMCP, get_connection: "Callable[[], IsaacConnection]"
     def set_joint_positions(
         prim_path: str, joint_positions: List[float], joint_indices: Optional[List[int]] = None
     ) -> str:
-        """Set target joint positions on a robot.
+        """Set target joint positions on a robot via ArticulationAction.
+
+        Units: radians for revolute joints, meters for prismatic joints (e.g. gripper fingers).
+        Use get_robot_info to discover joint names, types, and limits first.
+        After calling this, use step_simulation to advance and observe the result —
+        do not use play_simulation + sleep.
 
         Args:
             prim_path: The prim path of the robot.
@@ -119,6 +133,10 @@ def register_tools(mcp: FastMCP, get_connection: "Callable[[], IsaacConnection]"
     @mcp.tool("get_joint_positions")
     def get_joint_positions(prim_path: str) -> str:
         """Read current joint positions from a robot.
+
+        Units: radians for revolute joints, meters for prismatic joints.
+        Joint order matches the joint_names from get_robot_info.
+        For a combined step-and-read, prefer step_simulation with observe_joints.
 
         Args:
             prim_path: The prim path of the robot.
