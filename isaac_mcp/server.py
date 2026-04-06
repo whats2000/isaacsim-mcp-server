@@ -72,6 +72,7 @@ Scripts and Action Graphs operate WITHIN simulation frames (runtime-level):
 - IK solvers, trajectory planners, state machines
 - Sensor data processing pipelines
 Use execute_script for one-off setup, or write a .py file and load it with reload_script.
+Use create_action_graph to build Action Graphs programmatically (OnPlaybackTick → ScriptNode etc.).
 
 ## Workflow
 
@@ -106,6 +107,7 @@ Always prefer named tools over execute_script:
 - Checking physics → get_physics_state (not execute_script)
 - Checking drives → get_joint_config (not execute_script)
 - Checking logs → get_isaac_logs (not execute_script)
+- Building Action Graphs → create_action_graph (not execute_script)
 
 execute_script is the escape hatch for operations no named tool covers.
 """
