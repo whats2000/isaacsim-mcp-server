@@ -347,8 +347,9 @@ This creates a launcher that auto-assigns ports, waits for the extension socket,
 2. Create a physics scene if the stage is empty
 3. Prefer purpose-built tools before `execute_script`
 4. Use `list_available_robots` / `list_environments` before loading
-5. Use `step_simulation` with `observe_prims` and `observe_joints` for debugging
-6. Use `reload_script` to iterate on controllers without restarting
+5. Use `create_action_graph` to wire OnPlaybackTick → ScriptNode controllers
+6. Use `step_simulation` with `observe_prims` and `observe_joints` for debugging
+7. Use `reload_script` to iterate on controllers without restarting
 
 ---
 
@@ -359,11 +360,11 @@ A ready-to-run demo at `demo/franka_pick_place.py` using RMPflow for motion plan
 ```text
 1. Create a physics scene, ground plane, and a Franka FR3 robot
 2. Add two tables and a small cube on the first table
-3. Wire the pick-and-place script into an Action Graph
+3. Use `create_action_graph` to wire OnPlaybackTick → ScriptNode with the pick-and-place script
 4. Press Play -- the robot picks the cube and places it on the second table
 ```
 
-Uses the observability tools: `get_joint_config`, `step_simulation` with `observe_prims`, `get_physics_state`, and `reload_script`.
+Uses `create_action_graph` for Action Graph wiring, plus the observability tools: `get_joint_config`, `step_simulation` with `observe_prims`, `get_physics_state`, and `reload_script`.
 
 ---
 
