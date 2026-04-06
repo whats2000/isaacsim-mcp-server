@@ -340,23 +340,36 @@ class IsaacAdapterV5(IsaacAdapterBase):
 
     def get_robot_joint_info(self, prim_path: str) -> Dict[str, Any]:
         from isaacsim.core.prims import SingleArticulation
-        from pxr import UsdPhysics
+        from pxr import Usd, UsdPhysics
 
+        # Try to get joint info via articulation API (requires running sim)
+        joint_names: List[str] = []
+        num_dof = 0
         art = SingleArticulation(prim_path=prim_path)
-        joint_names = art.dof_names if art.dof_names else []
-        num_dof = art.num_dof if art.num_dof else 0
+        try:
+            art.initialize()
+            joint_names = list(art.dof_names) if art.dof_names else []
+            num_dof = art.num_dof if art.num_dof else 0
+        except Exception:
+            pass
 
+        # Fallback: discover joints by traversing USD stage
         stage = self.get_stage()
+        root_prim = stage.GetPrimAtPath(prim_path)
+        if not joint_names and root_prim.IsValid():
+            for desc in Usd.PrimRange(root_prim):
+                if desc.IsA(UsdPhysics.RevoluteJoint) or desc.IsA(UsdPhysics.PrismaticJoint):
+                    joint_names.append(desc.GetName())
+            num_dof = len(joint_names)
+
         joint_limits = []
         for jname in joint_names:
             limit_entry: Dict[str, Any] = {"name": jname}
-            for prim in stage.Traverse():
-                if not str(prim.GetPath()).startswith(prim_path):
+            for desc in Usd.PrimRange(root_prim):
+                if desc.GetName() != jname:
                     continue
-                if prim.GetName() != jname:
-                    continue
-                rev = UsdPhysics.RevoluteJoint(prim)
-                if rev and rev.GetAxisAttr().Get() is not None:
+                if desc.IsA(UsdPhysics.RevoluteJoint):
+                    rev = UsdPhysics.RevoluteJoint(desc)
                     lo = rev.GetLowerLimitAttr().Get()
                     hi = rev.GetUpperLimitAttr().Get()
                     limit_entry["type"] = "revolute"
@@ -364,8 +377,8 @@ class IsaacAdapterV5(IsaacAdapterBase):
                     limit_entry["upper"] = float(hi) if hi is not None else None
                     limit_entry["units"] = "degrees"
                     break
-                pris = UsdPhysics.PrismaticJoint(prim)
-                if pris and pris.GetAxisAttr().Get() is not None:
+                if desc.IsA(UsdPhysics.PrismaticJoint):
+                    pris = UsdPhysics.PrismaticJoint(desc)
                     lo = pris.GetLowerLimitAttr().Get()
                     hi = pris.GetUpperLimitAttr().Get()
                     limit_entry["type"] = "prismatic"
@@ -391,20 +404,121 @@ class IsaacAdapterV5(IsaacAdapterBase):
         from isaacsim.core.utils.types import ArticulationAction
 
         art = SingleArticulation(prim_path=prim_path)
-        art.initialize()
-        action = ArticulationAction(
-            joint_positions=np.array(positions),
-            joint_indices=np.array(joint_indices) if joint_indices else None,
-        )
-        controller = art.get_articulation_controller()
-        controller.apply_action(action)
+        try:
+            art.initialize()
+            action = ArticulationAction(
+                joint_positions=np.array(positions),
+                joint_indices=np.array(joint_indices) if joint_indices else None,
+            )
+            controller = art.get_articulation_controller()
+            controller.apply_action(action)
+        except Exception:
+            # Fallback: set USD drive targets directly (works when sim is stopped)
+            self._set_joint_drive_targets(prim_path, positions, joint_indices)
+
+    def _set_joint_drive_targets(
+        self,
+        prim_path: str,
+        positions: Sequence[float],
+        joint_indices: Optional[List[int]] = None,
+    ) -> None:
+        """Set joint drive targets via USD API — works regardless of simulation state."""
+        from pxr import Usd, UsdPhysics
+
+        stage = self.get_stage()
+        root_prim = stage.GetPrimAtPath(prim_path)
+        if not root_prim.IsValid():
+            raise ValueError(f"Prim not found: {prim_path}")
+
+        # Collect all joints under the articulation
+        joints = []
+        for desc in Usd.PrimRange(root_prim):
+            if desc.IsA(UsdPhysics.RevoluteJoint) or desc.IsA(UsdPhysics.PrismaticJoint):
+                joints.append(desc)
+
+        if joint_indices is not None:
+            targets = list(zip(joint_indices, positions))
+        else:
+            targets = list(enumerate(positions))
+
+        for idx, value in targets:
+            if idx >= len(joints):
+                continue
+            joint_prim = joints[idx]
+            is_revolute = joint_prim.IsA(UsdPhysics.RevoluteJoint)
+            drive_type = "angular" if is_revolute else "linear"
+            drive = UsdPhysics.DriveAPI.Get(joint_prim, drive_type)
+            if not drive:
+                drive = UsdPhysics.DriveAPI.Apply(joint_prim, drive_type)
+            if is_revolute:
+                drive.GetTargetPositionAttr().Set(float(np.degrees(value)))
+            else:
+                # Prismatic joints: positions in meters, USD targets in cm
+                drive.GetTargetPositionAttr().Set(float(value * 100.0))
+
+    def _get_joint_names(self, prim_path: str) -> List[str]:
+        """Get joint names, trying articulation API first then USD fallback."""
+        from isaacsim.core.prims import SingleArticulation
+
+        art = SingleArticulation(prim_path=prim_path)
+        try:
+            art.initialize()
+            if art.dof_names:
+                return list(art.dof_names)
+        except Exception:
+            pass
+
+        # Fallback: traverse USD
+        from pxr import Usd, UsdPhysics
+
+        stage = self.get_stage()
+        root_prim = stage.GetPrimAtPath(prim_path)
+        if not root_prim.IsValid():
+            return []
+        names: List[str] = []
+        for desc in Usd.PrimRange(root_prim):
+            if desc.IsA(UsdPhysics.RevoluteJoint) or desc.IsA(UsdPhysics.PrismaticJoint):
+                names.append(desc.GetName())
+        return names
 
     def get_joint_positions(self, prim_path: str) -> List[float]:
         from isaacsim.core.prims import SingleArticulation
 
         art = SingleArticulation(prim_path=prim_path)
-        positions = art.get_joint_positions()
-        return positions.tolist() if positions is not None else []
+        try:
+            art.initialize()
+            positions = art.get_joint_positions()
+            if positions is not None:
+                return positions.tolist()
+        except Exception:
+            pass
+
+        # Fallback: read drive target positions from USD
+        from pxr import Usd, UsdPhysics
+
+        stage = self.get_stage()
+        root_prim = stage.GetPrimAtPath(prim_path)
+        if not root_prim.IsValid():
+            return []
+        positions_list: List[float] = []
+        for desc in Usd.PrimRange(root_prim):
+            if not (desc.IsA(UsdPhysics.RevoluteJoint) or desc.IsA(UsdPhysics.PrismaticJoint)):
+                continue
+            is_revolute = desc.IsA(UsdPhysics.RevoluteJoint)
+            drive_type = "angular" if is_revolute else "linear"
+            drive = UsdPhysics.DriveAPI.Get(desc, drive_type)
+            if drive:
+                target = drive.GetTargetPositionAttr().Get()
+                if target is not None:
+                    if is_revolute:
+                        positions_list.append(float(np.radians(target)))
+                    else:
+                        positions_list.append(float(target / 100.0))
+                else:
+                    positions_list.append(0.0)
+            else:
+                positions_list.append(0.0)
+        return positions_list
 
     def get_joint_config(self, prim_path: str) -> Dict[str, Any]:
         from isaacsim.core.prims import SingleArticulation
@@ -415,14 +529,13 @@ class IsaacAdapterV5(IsaacAdapterBase):
         if not prim.IsValid():
             raise ValueError(f"Prim not found: {prim_path}")
 
-        # Get current joint positions via articulation
-        art = SingleArticulation(prim_path=prim_path)
-        joint_names = art.dof_names if art.dof_names else []
-        current_positions = art.get_joint_positions()
-        current_pos_list = current_positions.tolist() if current_positions is not None else []
+        # Get current joint positions and names via articulation (requires running sim)
+        joint_names = self._get_joint_names(prim_path)
+        current_pos_list = self.get_joint_positions(prim_path)
 
         # Get runtime target positions (from applied actions, not USD defaults)
-        runtime_targets = []
+        art = SingleArticulation(prim_path=prim_path)
+        runtime_targets: List[float] = []
         try:
             art.initialize()
             applied_action = art.get_applied_action()
@@ -766,10 +879,7 @@ class IsaacAdapterV5(IsaacAdapterBase):
             for path in observe_joints:
                 try:
                     positions = self.get_joint_positions(path)
-                    from isaacsim.core.prims import SingleArticulation
-
-                    art = SingleArticulation(prim_path=path)
-                    names = art.dof_names if art.dof_names else []
+                    names = self._get_joint_names(path)
                     joints_dict = dict(zip(names, positions)) if names else {"positions": positions}
                     joint_states.append({"prim_path": path, "joints": joints_dict})
                 except Exception as e:
