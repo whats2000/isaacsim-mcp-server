@@ -55,7 +55,14 @@ def create(
         _prim = adapter.create_prim(prim_path, prim_type=object_type)
         if position or rotation or scale:
             adapter.set_prim_transform(prim_path, position=position, rotation=rotation, scale=scale)
-        return {"status": "success", "message": f"Created {object_type}", "prim_path": prim_path}
+        response: Dict[str, Any] = {"status": "success", "message": f"Created {object_type}", "prim_path": prim_path}
+        try:
+            actual_size, (bbox_min, bbox_max) = adapter.get_prim_actual_size(prim_path)
+            response["actual_size"] = actual_size
+            response["bounding_box"] = {"min": bbox_min, "max": bbox_max}
+        except Exception:
+            pass
+        return response
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
