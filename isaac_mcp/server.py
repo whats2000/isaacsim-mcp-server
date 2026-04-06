@@ -108,6 +108,7 @@ Always prefer named tools over execute_script:
 - Checking drives → get_joint_config (not execute_script)
 - Checking logs → get_isaac_logs (not execute_script)
 - Building Action Graphs → create_action_graph (not execute_script)
+- Editing Action Graphs (update script, set usePath/scriptPath) → edit_action_graph
 
 execute_script is the escape hatch for operations no named tool covers.
 """

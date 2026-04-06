@@ -60,7 +60,7 @@ def register_tools(mcp: FastMCP, get_connection: "Callable[[], IsaacConnection]"
                 - "value": The value to set
             evaluator: Graph evaluator type (default "push").
 
-        Example:
+        Example (inline script):
             create_action_graph(
                 graph_path="/World/ActionGraph",
                 nodes=[
@@ -71,9 +71,14 @@ def register_tools(mcp: FastMCP, get_connection: "Callable[[], IsaacConnection]"
                     ["OnPlaybackTick.outputs:tick", "ScriptNode.inputs:execIn"]
                 ],
                 values=[
-                    {"attr": "ScriptNode.inputs:script", "value": "print('hello')"}
+                    {"attr": "ScriptNode.inputs:script", "value": "def compute(db): ..."}
                 ]
             )
+
+        Note: For ScriptNode with a file path, create the graph first, then use
+        edit_action_graph to set usePath and scriptPath — those attributes
+        require direct attribute setting (og.Controller.set) rather than
+        SET_VALUES during graph creation.
         """
         try:
             conn = get_connection()
@@ -85,6 +90,48 @@ def register_tools(mcp: FastMCP, get_connection: "Callable[[], IsaacConnection]"
             if values is not None:
                 params["values"] = values
             result = conn.send_command("graphs.create_action_graph", params)
+            return json.dumps(result, indent=2)
+        except Exception as e:
+            return json.dumps({"status": "error", "message": str(e)})
+
+    @mcp.tool("edit_action_graph")
+    def edit_action_graph(
+        graph_path: str = "/World/ActionGraph",
+        values: Optional[List[Dict[str, object]]] = None,
+        connections: Optional[List[List[str]]] = None,
+    ) -> str:
+        """Edit an existing OmniGraph Action Graph: set attribute values or add connections.
+
+        Use this to update ScriptNode scripts (inline or file path), change attribute
+        values, or add new connections on an already-created graph.
+
+        For ScriptNode with a local file script, set both usePath and scriptPath:
+            values=[
+                {"attr": "ScriptNode.inputs:usePath", "value": true},
+                {"attr": "ScriptNode.inputs:scriptPath", "value": "/path/to/script.py"}
+            ]
+
+        For ScriptNode with inline script:
+            values=[
+                {"attr": "ScriptNode.inputs:usePath", "value": false},
+                {"attr": "ScriptNode.inputs:script", "value": "def compute(db): ..."}
+            ]
+
+        Args:
+            graph_path: USD prim path of the existing graph (default "/World/ActionGraph").
+            values: List of attribute value overrides. Each dict has:
+                - "attr": Attribute path relative to graph (e.g. "ScriptNode.inputs:script")
+                - "value": The value to set
+            connections: List of [source_attr, target_attr] pairs to add.
+        """
+        try:
+            conn = get_connection()
+            params: Dict[str, object] = {"graph_path": graph_path}
+            if values is not None:
+                params["values"] = values
+            if connections is not None:
+                params["connections"] = connections
+            result = conn.send_command("graphs.edit_action_graph", params)
             return json.dumps(result, indent=2)
         except Exception as e:
             return json.dumps({"status": "error", "message": str(e)})
