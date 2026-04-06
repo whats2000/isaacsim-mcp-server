@@ -229,10 +229,17 @@ def edit_action_graph(
                     og.Controller.set(attribute, val)
                     changes_made.append(f"{attr_name} on {node_path}")
 
-            # Auto-reset state:omni_initialized when script changes.
-            # Uses direct attribute set (og.Controller.set) because
-            # og.Controller.edit SET_VALUES can fail to resolve relative
-            # state: paths on an existing graph.
+            # Auto-reset ScriptNode when script content or path changes.
+            #
+            # Simply setting state:omni_initialized = False via og.Controller
+            # is unreliable: setting inputs:scriptPath can trigger a graph
+            # evaluation that immediately re-sets omni_initialized to True,
+            # racing with our reset.
+            #
+            # Robust approach: clear the ScriptNode's internal shared_state
+            # caches (use_path, script) so that compute() detects a mismatch
+            # and forces a full re-read + recompile, regardless of the
+            # omni_initialized attribute value.
             if script_changed:
                 if graph is None:
                     graph = og.get_graph_by_path(graph_path)
@@ -248,10 +255,26 @@ def edit_action_graph(
                         node_path = f"{graph_path}/{node_name}"
                         node = graph.get_node(node_path)
                         if node is not None and node.is_valid():
+                            # 1. Reset the USD state attribute
                             attr = node.get_attribute("state:omni_initialized")
                             if attr is not None and attr.is_valid():
                                 og.Controller.set(attr, False)
-                                changes_made.append(f"auto-reset state:omni_initialized on {node_path}")
+
+                            # 2. Clear ScriptNode internal caches so compute()
+                            #    detects a change even if omni_initialized
+                            #    was overwritten by a racing graph evaluation.
+                            try:
+                                from omni.graph.scriptnode.ogn.OgnScriptNodeDatabase import (
+                                    OgnScriptNodeDatabase,
+                                )
+
+                                shared = OgnScriptNodeDatabase.shared_internal_state(node)
+                                shared.use_path = None  # forces use_path mismatch check
+                                shared.script = None  # forces script content comparison
+                            except Exception:
+                                pass  # ScriptNode extension not loaded — fall back to attr reset only
+
+                            changes_made.append(f"auto-reset state:omni_initialized on {node_path}")
 
         # ── Add new connections ────────────────────────────────────
         if connections:
