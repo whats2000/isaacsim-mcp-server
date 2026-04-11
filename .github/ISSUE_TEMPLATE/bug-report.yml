@@ -1,0 +1,93 @@
+name: "\U0001F41B Bug Report"
+description: Submit a bug report to help us improve Isaac Sim MCP Server
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this bug report!
+
+        Before you submit, please search the [existing issues](https://github.com/whats2000/isaacsim-mcp-server/issues) to make sure this hasn't been reported already.
+
+  - type: textarea
+    id: system-info
+    attributes:
+      label: System Info
+      description: |
+        Please share your system information. Include:
+        - OS and version
+        - Python version
+        - Isaac Sim version
+        - isaacsim-mcp-server version
+        - GPU model and driver version
+      placeholder: |
+        - OS: Ubuntu 22.04
+        - Python: 3.10.12
+        - Isaac Sim: 4.5.0
+        - isaacsim-mcp-server: 0.5.2
+        - GPU: NVIDIA RTX 4090, Driver 550.xx
+    validations:
+      required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      description: Which component is this bug related to?
+      options:
+        - MCP Server (isaac_mcp)
+        - Isaac Sim Extension (mcp_extension)
+        - Scene Management Tools
+        - Robot Control Tools
+        - Sensor Tools
+        - Simulation Tools
+        - Physics Tools
+        - Asset Management Tools
+        - Graph Tools
+        - Viewport Tools
+        - Installation / Setup
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    validations:
+      required: true
+    attributes:
+      label: Reproduction
+      description: |
+        Please provide a minimal code sample or steps that reproduce the problem.
+        Include any relevant configuration (e.g., MCP client settings, Isaac Sim scene setup).
+
+        Use code tags to correctly format your code. Do not use screenshots for code or error messages.
+      placeholder: |
+        Steps to reproduce the behavior:
+
+          1.
+          2.
+          3.
+
+  - type: textarea
+    id: expected-behavior
+    validations:
+      required: true
+    attributes:
+      label: Expected behavior
+      description: A clear and concise description of what you expected to happen.
+
+  - type: textarea
+    id: actual-behavior
+    validations:
+      required: true
+    attributes:
+      label: Actual behavior
+      description: |
+        A clear description of what actually happened. Include any error messages or stack traces.
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional context
+      description: Add any other context about the problem here (logs, screenshots of the simulator, etc.).
