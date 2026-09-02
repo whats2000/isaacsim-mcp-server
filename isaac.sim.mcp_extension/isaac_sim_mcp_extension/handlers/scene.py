@@ -59,8 +59,13 @@ def get_info(adapter: IsaacAdapterBase) -> Dict[str, Any]:
         return {"status": "error", "message": str(e)}
 
 
-def _find_collision_floor(stage) -> Optional[str]:
-    """Path of a collision-enabled ground plane already on the stage, or None.
+def _find_collision_floor(stage, root: Optional[str] = None) -> Optional[str]:
+    """Path of a collision-enabled ground plane, or None.
+
+    Searches the whole stage by default; pass ``root`` to search only that
+    subtree. #38 needs the scoped form: a ``/World/groundPlane`` left by an
+    earlier create_physics_scene is not the loaded environment's floor, and on a
+    dirty stage it can sit at a different height entirely.
 
     Deliberately narrow: a prim of type ``Plane`` carrying ``CollisionAPI``.
     That is what the shipped environments author (simple_warehouse ships
@@ -72,10 +77,17 @@ def _find_collision_floor(stage) -> Optional[str]:
     is a worse failure than the stacking this guards against. An environment
     whose floor is a Mesh therefore still stacks; that is recorded on #37.
     """
-    from pxr import UsdPhysics
+    from pxr import Usd, UsdPhysics
 
     try:
-        for prim in stage.Traverse():
+        if root is None:
+            prims = stage.Traverse()
+        else:
+            root_prim = stage.GetPrimAtPath(root)
+            if not root_prim or not root_prim.IsValid():
+                return None
+            prims = Usd.PrimRange(root_prim)
+        for prim in prims:
             if prim.GetTypeName() != "Plane":
                 continue
             if prim.HasAPI(UsdPhysics.CollisionAPI):
@@ -85,6 +97,25 @@ def _find_collision_floor(stage) -> Optional[str]:
         # through and create the plane, which is the pre-#37 behaviour.
         return None
     return None
+
+
+def _prim_world_z(stage, prim_path: str) -> Optional[float]:
+    """World-space Z of a prim's origin.
+
+    The world transform, not the local one: _reference_conversion rotates and
+    rescales Y-up / centimetre environments immediately before bounds are read,
+    so a floor prim's authored translate is not its height on the stage.
+    """
+    from pxr import Usd, UsdGeom
+
+    try:
+        prim = stage.GetPrimAtPath(prim_path)
+        if not prim or not prim.IsValid():
+            return None
+        matrix = UsdGeom.Xformable(prim).ComputeLocalToWorldTransform(Usd.TimeCode.Default())
+        return float(matrix.ExtractTranslation()[2])
+    except Exception:
+        return None
 
 
 def create_physics(
@@ -414,7 +445,17 @@ def _reference_conversion(adapter: IsaacAdapterBase, prim_path: str, url: str) -
 
 def _world_bounds(adapter: IsaacAdapterBase, prim_path: str) -> Dict[str, Any]:
     """Extent and floor height of a loaded environment, so the caller can place
-    objects on it without a second round trip."""
+    objects on it without a second round trip.
+
+    ``floor_height`` and ``bounds_min_z`` are two different measurements and were
+    once the same field. The bounding-box minimum is the environment's *lowest
+    authored geometry* — trim, a recessed drain, a slightly sunk prop all drag it
+    below the surface anything rests on. simple_warehouse reports -0.009 against
+    a collision floor at 0.0, so placing on it embedded the object 9mm and that
+    resolved as a settle or a jitter on the first step rather than as an error.
+    The size of the error is a property of whichever environment is loaded, so it
+    could not be corrected for once and reused.
+    """
     try:
         from pxr import Usd, UsdGeom
 
@@ -427,10 +468,38 @@ def _world_bounds(adapter: IsaacAdapterBase, prim_path: str) -> Dict[str, Any]:
         if rng.IsEmpty():
             return {}
         mn, mx = rng.GetMin(), rng.GetMax()
-        return {
+        bounds: Dict[str, Any] = {
             "extent": [round(mx[i] - mn[i], 3) for i in range(3)],
-            "floor_height": round(mn[2], 3),
+            "bounds_min_z": round(mn[2], 3),
         }
+
+        # Scoped to the environment: a groundPlane from an earlier
+        # create_physics_scene is not this environment's floor.
+        floor_path = _find_collision_floor(stage, root=prim_path)
+        floor_z = _prim_world_z(stage, floor_path) if floor_path else None
+        if floor_z is not None:
+            bounds["floor_height"] = round(floor_z, 3)
+            bounds["floor_height_source"] = "collision_floor"
+            bounds["floor_prim"] = floor_path
+        else:
+            # An environment whose floor is a Mesh has no collision Plane to
+            # measure. Falling back to the bbox minimum is the old, wrong
+            # answer, so it is labelled rather than handed back looking
+            # measured — the same treatment position_source and
+            # velocity_warning give a value that may not mean what it looks
+            # like. Omitting it instead would push the caller into raw USD to
+            # find the floor, which is the round trip this field exists to
+            # remove.
+            bounds["floor_height"] = bounds["bounds_min_z"]
+            bounds["floor_height_source"] = "bounds_min_z"
+            bounds["floor_height_warning"] = (
+                "No collision Plane was found in this environment, so floor_height is the "
+                "bounding-box minimum — the lowest authored geometry, which is not necessarily "
+                "the surface objects rest on. An object placed here may spawn embedded in the "
+                "floor or hovering above it. Verify with a physics raycast or get_prim_info on "
+                "the environment's floor prim before relying on it."
+            )
+        return bounds
     except Exception:
         return {}
 

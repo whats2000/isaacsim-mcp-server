@@ -164,10 +164,18 @@ def register_tools(mcp: FastMCP, get_connection: "Callable[[], IsaacConnection]"
 
         Many shipped environments are authored Y-up and/or in centimeters; those
         are rotated and rescaled to match the stage, and the response reports what
-        was applied under "corrections". It also returns "bounds" with the
-        environment's extent and floor_height, so objects can be placed on the
-        ground without a second query. Read prim_path from the response rather
+        was applied under "corrections". Read prim_path from the response rather
         than assuming it — it defaults to a named child of /Environment.
+
+        "bounds" carries two different heights, so use the right one:
+          floor_height  — the surface objects rest on, measured from the
+                          environment's collision floor. Place with
+                          position=[x, y, floor_height].
+          bounds_min_z  — the lowest authored geometry (trim, a recessed drain,
+                          a sunk prop). Not a placement height.
+        floor_height_source says which was used. When it reads "bounds_min_z" no
+        collision floor could be measured and floor_height is a fallback that may
+        be below the real surface — floor_height_warning explains it.
 
         Args:
             environment: Environment name or search term (e.g. "warehouse", "hospital", "office").
