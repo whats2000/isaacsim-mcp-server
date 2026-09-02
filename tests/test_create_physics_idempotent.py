@@ -55,6 +55,26 @@ class _FakeStage:
     def GetPrimAtPath(self, path):
         return _FakePrim(str(path) in self.existing)
 
+    def Traverse(self):
+        # create_physics searches the stage for an existing collision floor
+        # (#37). Without this the search raises into its fallback, and these
+        # tests would pass through the error path rather than the real one.
+        return [_FakeFloor(path) for path in sorted(self.existing)]
+
+
+class _FakeFloor(_FakePrim):
+    """A prim the floor search can classify: type and path, collision via HasAPI."""
+
+    def __init__(self, path):
+        super().__init__(True)
+        self._path = path
+
+    def GetTypeName(self):
+        return "Plane" if self._path.endswith("groundPlane") else "Xform"
+
+    def GetPath(self):
+        return self._path
+
 
 def _adapter(existing):
     a = MagicMock()

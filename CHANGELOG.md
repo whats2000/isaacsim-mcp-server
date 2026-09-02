@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **`load_environment` followed by `create_physics_scene` left two collision floors on the stage** ([#37](https://github.com/whats2000/isaacsim-mcp-server/issues/37)). The ground-plane guard only asked whether `/World/groundPlane` existed, never whether the stage already had a floor, so the documented setup order always stacked a second one. In `simple_warehouse` both sit at z=0 and nothing looks wrong; on an environment whose floor is elsewhere, objects rest at a height nothing explains and which plane wins is PhysX's decision. `create_physics_scene` now skips its plane when a collision-enabled `Plane` is already present, and reports `ground_plane` (the floor objects will land on) and `ground_plane_created`.
+
 ## [0.6.1] - 2026-09-01
 
 ### Added

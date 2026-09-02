@@ -46,7 +46,14 @@ def register_tools(mcp: FastMCP, get_connection: "Callable[[], IsaacConnection]"
 
     @mcp.tool("create_physics_scene")
     def create_physics_scene(gravity: Optional[List[float]] = None, scene_name: str = "PhysicsScene") -> str:
-        """Create a physics scene with ground plane. Call get_scene_info first to verify connection.
+        """Create a physics scene, adding a ground plane only if the stage lacks one.
+        Call get_scene_info first to verify connection.
+
+        A loaded environment brings its own collision floor, so this does not add
+        a second one on top of it. The response reports "ground_plane" — the floor
+        objects will actually land on — and "ground_plane_created", false when the
+        stage already had one. Read the floor's height from that prim rather than
+        assuming z=0; an environment's floor is not always at the origin.
 
         Args:
             gravity: Gravity vector [x, y, z]. Default is standard gravity.
@@ -66,9 +73,10 @@ def register_tools(mcp: FastMCP, get_connection: "Callable[[], IsaacConnection]"
     def clear_scene(keep_physics: bool = False, keep_environment: bool = False) -> str:
         """Remove all prims from the scene.
 
-        Also empties any environment loaded by load_environment, so a later
-        create_physics_scene does not stack a second ground under the first —
-        it always creates one. The stage's defaultLight is always kept — a stage with no
+        Also empties any environment loaded by load_environment, which removes
+        that environment's collision floor along with it — so a later
+        create_physics_scene finds no floor and supplies its own.
+        The stage's defaultLight is always kept — a stage with no
         light renders black, which looks like a broken camera.
 
         Args:

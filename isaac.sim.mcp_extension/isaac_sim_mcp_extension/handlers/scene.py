@@ -59,6 +59,34 @@ def get_info(adapter: IsaacAdapterBase) -> Dict[str, Any]:
         return {"status": "error", "message": str(e)}
 
 
+def _find_collision_floor(stage) -> Optional[str]:
+    """Path of a collision-enabled ground plane already on the stage, or None.
+
+    Deliberately narrow: a prim of type ``Plane`` carrying ``CollisionAPI``.
+    That is what the shipped environments author (simple_warehouse ships
+    ``GroundPlane/CollisionPlane``) and it cannot mistake scenery for a floor.
+
+    The looser rule considered here — any collision prim whose bbox is wide and
+    thin — also catches Mesh-authored floors, but a 3 x 1 x 0.05 m wall panel or
+    a tabletop matches it just as well, and suppressing a floor the caller needs
+    is a worse failure than the stacking this guards against. An environment
+    whose floor is a Mesh therefore still stacks; that is recorded on #37.
+    """
+    from pxr import UsdPhysics
+
+    try:
+        for prim in stage.Traverse():
+            if prim.GetTypeName() != "Plane":
+                continue
+            if prim.HasAPI(UsdPhysics.CollisionAPI):
+                return str(prim.GetPath())
+    except Exception:
+        # A stage that cannot be walked must not fail the whole call; fall
+        # through and create the plane, which is the pre-#37 behaviour.
+        return None
+    return None
+
+
 def create_physics(
     adapter: IsaacAdapterBase, gravity: Optional[Sequence[float]] = None, scene_name: str = "PhysicsScene"
 ) -> Dict[str, Any]:
@@ -66,20 +94,36 @@ def create_physics(
         from pxr import UsdPhysics
 
         scene_path = adapter.create_physics_scene(gravity=gravity, scene_name=scene_name)
-        # Ground plane with collision so objects don't fall through. Only create
-        # it when missing: create_prim raises "A prim already exists at prim
-        # path" on a second call, and because the scene is established first the
-        # tool would report failure for work it had just completed — while
-        # naming groundPlane, which looks unrelated to the caller's request.
-        # Re-establishing a scene on a dirty stage is a normal thing to do, so
-        # this stays idempotent.
+        # Ground plane with collision so objects don't fall through — but only
+        # when the stage has no floor of its own. load_environment brings its
+        # own collision floor, and adding a second one leaves two: in
+        # simple_warehouse both happen to sit at z=0 so nothing looks wrong,
+        # while on an environment whose floor is elsewhere the objects rest at
+        # a height nothing on screen explains, and which plane wins is PhysX's
+        # decision rather than the caller's.
+        #
+        # Creation also stays idempotent: create_prim raises "A prim already
+        # exists at prim path" on a second call, and because the scene is
+        # established first the tool would report failure for work it had just
+        # completed — while naming groundPlane, which looks unrelated to the
+        # caller's request. Re-establishing a scene on a dirty stage is normal.
         stage = adapter.get_stage()
         floor_path = "/World/groundPlane"
-        if not stage.GetPrimAtPath(floor_path).IsValid():
-            adapter.create_prim(floor_path, "Plane")
-        gp = stage.GetPrimAtPath(floor_path)
-        if gp.IsValid() and not gp.HasAPI(UsdPhysics.CollisionAPI):
-            UsdPhysics.CollisionAPI.Apply(gp)
+        existing_floor = _find_collision_floor(stage)
+        ground_plane_created = False
+        if existing_floor is not None:
+            ground_plane = existing_floor
+        else:
+            ground_plane = floor_path
+            # A groundPlane that exists without collision reaches here, because
+            # a plane that holds nothing up is not a floor. Adopt it rather than
+            # recreating it.
+            if not stage.GetPrimAtPath(floor_path).IsValid():
+                adapter.create_prim(floor_path, "Plane")
+                ground_plane_created = True
+            gp = stage.GetPrimAtPath(floor_path)
+            if gp.IsValid() and not gp.HasAPI(UsdPhysics.CollisionAPI):
+                UsdPhysics.CollisionAPI.Apply(gp)
 
         # Bring physics up NOW, while the stage still holds no articulation.
         #
@@ -113,7 +157,15 @@ def create_physics(
         # it always has -- V6 answers "unknown" whenever detection fails.
         if adapter.engine != adapter.ENGINE_NEWTON:
             adapter._ensure_physics_world()
-        return {"status": "success", "message": f"Physics scene created at {scene_path}"}
+        return {
+            "status": "success",
+            "message": f"Physics scene created at {scene_path}",
+            # Which floor is authoritative, and whether this call supplied it.
+            # A bare success reads as "I made you a ground plane" even when the
+            # environment's own floor is the one objects will land on.
+            "ground_plane": ground_plane,
+            "ground_plane_created": ground_plane_created,
+        }
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
