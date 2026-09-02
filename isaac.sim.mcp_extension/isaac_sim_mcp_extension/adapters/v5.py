@@ -1309,13 +1309,22 @@ class IsaacAdapterV5(IsaacAdapterBase):
                             state["position"] = [float(pos[0]), float(pos[1]), float(pos[2])]
                         else:
                             transform = self.get_prim_transform(path)
-                            state["position"] = transform.get("position", [0, 0, 0])
+                            state["position"] = transform.get("position_world") or transform.get(
+                                "position_local", [0, 0, 0]
+                            )
                     except Exception:
                         transform = self.get_prim_transform(path)
-                        state["position"] = transform.get("position", [0, 0, 0])
+                        state["position"] = transform.get("position_world") or transform.get(
+                            "position_local", [0, 0, 0]
+                        )
                 else:
                     transform = self.get_prim_transform(path)
-                    state["position"] = transform.get("position", [0, 0, 0])
+                    # World, to match the physics branch above: PhysX and the
+                    # tensor view both report world positions, so falling back
+                    # to the parent-relative one silently changed the frame of
+                    # this field depending on whether the physics read
+                    # succeeded -- in the field most used to measure motion.
+                    state["position"] = transform.get("position_world") or transform.get("position_local", [0, 0, 0])
                 # Add velocity if rigid body
                 if prim.HasAPI(UsdPhysics.RigidBodyAPI):
                     try:

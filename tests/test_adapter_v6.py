@@ -1169,5 +1169,18 @@ def test_v6_get_prim_transform_labels_a_usd_fallback_on_newton():
     """
     src = _v6_function_src("get_prim_transform")
     assert src, "get_prim_transform not found"
-    assert '"usd"' in src, "a USD-sourced position on Newton must say so"
     assert "position_warning" in src, "the caller has to be told it may be the spawn pose"
+
+
+def test_v6_puts_the_fabric_pose_in_position_world_not_over_the_local_one():
+    """The Fabric pose is a WORLD position (#39).
+
+    It used to be written over `position`, which was parent-relative on every
+    other runtime -- so one field carried two different frames depending on
+    engine and prim type. It now lands in position_world, where it belongs, and
+    the local pose is left alone.
+    """
+    src = _v6_function_src("get_prim_transform")
+    assert '"position_world"' in src, "the Fabric pose must land in position_world"
+    assert '"physics"' in src, "a physics-sourced world position must say so"
+    assert 'transform["position"]' not in src, "the Fabric pose must not overwrite the local pose"

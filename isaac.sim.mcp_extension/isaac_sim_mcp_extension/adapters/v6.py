@@ -315,16 +315,21 @@ class IsaacAdapterV6(IsaacAdapterBase):
             # on the ground still read z=2.0 from USD.
             simulated, served = self._try_articulation(lambda: self._simulated_position(prim_path))
             if served and simulated is not None:
-                transform["position"] = simulated
-                transform["position_source"] = "physics"
+                # The Fabric pose is a WORLD position, so it belongs in
+                # position_world. Writing it over position (which was
+                # parent-relative on every other runtime) is what made one field
+                # carry two frames depending on engine and prim type — #39.
+                transform["position_world"] = simulated
+                transform["position_world_source"] = "physics"
+                transform.pop("position_world_warning", None)
             elif self._prim_is_rigid_body(prim):
                 # Only rigid bodies move under physics; for everything else USD
                 # is the authority and a tag would be noise.
-                transform["position_source"] = "usd"
                 transform["position_warning"] = (
                     "Newton keeps simulated poses in Fabric, and this position could not be read from "
                     "physics — it is the authored USD pose, which is the spawn pose for a body that has "
-                    "been simulated. Step the simulation and retry, or read the body through get_physics_state."
+                    "been simulated. Both position_local and position_world derive from it, so both are "
+                    "stale. Step the simulation and retry, or read the body through get_physics_state."
                 )
         return transform
 
@@ -1843,13 +1848,22 @@ class IsaacAdapterV6(IsaacAdapterBase):
                                 state["position"] = [float(flat[0]), float(flat[1]), float(flat[2])]
                         else:
                             transform = self.get_prim_transform(path)
-                            state["position"] = transform.get("position", [0, 0, 0])
+                            state["position"] = transform.get("position_world") or transform.get(
+                                "position_local", [0, 0, 0]
+                            )
                     except Exception:
                         transform = self.get_prim_transform(path)
-                        state["position"] = transform.get("position", [0, 0, 0])
+                        state["position"] = transform.get("position_world") or transform.get(
+                            "position_local", [0, 0, 0]
+                        )
                 else:
                     transform = self.get_prim_transform(path)
-                    state["position"] = transform.get("position", [0, 0, 0])
+                    # World, to match the physics branch above: PhysX and the
+                    # tensor view both report world positions, so falling back
+                    # to the parent-relative one silently changed the frame of
+                    # this field depending on whether the physics read
+                    # succeeded -- in the field most used to measure motion.
+                    state["position"] = transform.get("position_world") or transform.get("position_local", [0, 0, 0])
                 if prim.HasAPI(UsdPhysics.RigidBodyAPI):
                     try:
                         ps = self.get_physics_state(path)

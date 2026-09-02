@@ -97,7 +97,14 @@ def create_camera(
             eye = position
             if eye is None:
                 try:
-                    eye = (adapter.get_prim_transform(prim_path) or {}).get("position")
+                    current = adapter.get_prim_transform(prim_path) or {}
+                    # target is a world coordinate, so the eye must be one too.
+                    # This used to read "position", which was the prim's
+                    # parent-relative pose — a nested camera was aimed from the
+                    # wrong frame and still produced a rotation, so it failed
+                    # silently (#39). position_local is the last resort: for a
+                    # prim directly under the stage root the two coincide.
+                    eye = current.get("position_world") or current.get("position_local")
                 except Exception:
                     eye = None
             if eye is not None:

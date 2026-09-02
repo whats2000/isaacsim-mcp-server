@@ -72,7 +72,9 @@ def test_reader_reports_rotation_and_scale_not_just_position():
     with open(path) as f:
         src = f.read()
     body = _func("transforms.py", "read_transform")
-    for key in ('"position"', '"rotation"', '"scale"', '"rotation_units"'):
+    # There is deliberately no bare "position": naming one frame and not the
+    # other is what made a parent-relative value read as a world one (#39).
+    for key in ('"position_local"', '"position_world"', '"rotation"', '"scale"', '"rotation_units"'):
         assert key in body, f"read_transform does not report {key}"
     # Scale must not be allowed to corrupt the reported rotation.
     assert "Orthonormalize" in body

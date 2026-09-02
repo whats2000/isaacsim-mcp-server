@@ -130,11 +130,24 @@ def register_tools(mcp: FastMCP, get_connection: "Callable[[], IsaacConnection]"
     def get_prim_info(prim_path: str) -> str:
         """Get detailed information about a specific prim.
 
-        Returns type, children, and a transform block holding position,
-        rotation [rx, ry, rz] in degrees (XYZ order, the same convention
-        transform_object accepts), and scale. For geometric prims (Cube,
-        Sphere, Cylinder, Cone, Capsule), also returns actual_size [x, y, z]
-        in meters accounting for scale and default primitive dimensions.
+        Returns type, children, and a transform block. Position is reported in
+        both frames, under explicit names — there is no bare "position":
+          position_local — parent-relative, the value transform_object writes.
+          position_world — where the prim actually is on the stage. Use this to
+                           reason about distances, reach, or contact. For a
+                           robot link such as /World/Franka/fr3_hand_tcp the two
+                           differ by the robot's own pose.
+        position_world_source is "usd" (derived from the authored transform) or
+        "physics" (measured, on Newton). On Newton a body that has been
+        simulated may carry position_warning saying both values are its spawn
+        pose; read it through get_physics_state instead.
+
+        Also returns rotation [rx, ry, rz] in degrees (XYZ order, the same
+        convention transform_object accepts) and scale — both local, like
+        position_local. For geometric prims (Cube, Sphere, Cylinder, Cone,
+        Capsule), also returns actual_size [x, y, z] in meters accounting for
+        scale and default primitive dimensions (world-space, like
+        position_world).
 
         Args:
             prim_path: The USD prim path to inspect.
