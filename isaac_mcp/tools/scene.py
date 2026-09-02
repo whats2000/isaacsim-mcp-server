@@ -49,11 +49,18 @@ def register_tools(mcp: FastMCP, get_connection: "Callable[[], IsaacConnection]"
         """Create a physics scene, adding a ground plane only if the stage lacks one.
         Call get_scene_info first to verify connection.
 
-        A loaded environment brings its own collision floor, so this does not add
-        a second one on top of it. The response reports "ground_plane" — the floor
-        objects will actually land on — and "ground_plane_created", false when the
-        stage already had one. Read the floor's height from that prim rather than
-        assuming z=0; an environment's floor is not always at the origin.
+        A loaded environment usually brings its own collision floor, and this does
+        not add a second one on top of it. The response reports "ground_plane" —
+        the floor objects will actually land on — and "ground_plane_created", false
+        when the stage already had one. Read the floor's height from that prim
+        rather than assuming z=0; an environment's floor is not always at the origin.
+
+        The check recognises a collision-enabled prim of type Plane, which is what
+        the shipped environments author. An environment whose floor is a Mesh is
+        NOT recognised, so a second plane is added and two collision floors end up
+        on the stage — which one wins is the physics engine's decision. When
+        "ground_plane_created" is true after loading an environment, verify the
+        floor before placing anything on it.
 
         Args:
             gravity: Gravity vector [x, y, z]. Default is standard gravity.

@@ -44,11 +44,18 @@ from isaac_sim_mcp_extension.handlers import scene as scene_handlers
 
 
 @pytest.fixture(autouse=True)
-def _collision_api(monkeypatch):
-    """The offline pxr stub has no UsdPhysics.CollisionAPI; supply one."""
+def collision_api(monkeypatch):
+    """The offline pxr stub has no UsdPhysics.CollisionAPI; supply one.
+
+    Yielded so a test can assert the API was actually applied. Asserting only
+    on the returned dict cannot distinguish "collision applied" from "collision
+    silently skipped" -- both leave the same response.
+    """
     from pxr import UsdPhysics
 
-    monkeypatch.setattr(UsdPhysics, "CollisionAPI", MagicMock(), raising=False)
+    api = MagicMock()
+    monkeypatch.setattr(UsdPhysics, "CollisionAPI", api, raising=False)
+    return api
 
 
 class _Prim:
@@ -161,12 +168,13 @@ def test_second_call_reports_its_own_plane_rather_than_recreating_it():
     assert result["ground_plane"] == "/World/groundPlane"
 
 
-def test_applies_collision_to_an_existing_uncollided_ground_plane():
+def test_applies_collision_to_an_existing_uncollided_ground_plane(collision_api):
     """A Plane at our own path but without CollisionAPI must not be recreated.
 
     create_prim raises "A prim already exists at prim path" -- and because the
     physics scene is established first, the tool would report failure for work
-    it had just completed.
+    it had just completed. It must be adopted instead: given collision, since a
+    plane that holds nothing up is not a floor.
     """
     stage = _Stage([_Prim("/World/groundPlane", "Plane", collision=False)])
     a = _adapter(stage)
@@ -176,3 +184,15 @@ def test_applies_collision_to_an_existing_uncollided_ground_plane():
     assert result["status"] == "success"
     a.create_prim.assert_not_called()
     assert result["ground_plane"] == "/World/groundPlane"
+    # Without this the test passes even when collision is never applied: the
+    # response is identical either way, so the returned dict cannot prove it.
+    collision_api.Apply.assert_called_once()
+
+
+def test_does_not_reapply_collision_to_a_plane_that_already_has_it(collision_api):
+    """Applying CollisionAPI twice is wasted work on every repeat call."""
+    stage = _Stage([_Prim("/World/groundPlane", "Plane", collision=True)])
+
+    scene_handlers.create_physics(_adapter(stage))
+
+    collision_api.Apply.assert_not_called()
