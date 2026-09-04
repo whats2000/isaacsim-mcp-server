@@ -59,6 +59,65 @@ def get_info(adapter: IsaacAdapterBase) -> Dict[str, Any]:
         return {"status": "error", "message": str(e)}
 
 
+def _find_collision_floor(stage, root: Optional[str] = None) -> Optional[str]:
+    """Path of a collision-enabled ground plane, or None.
+
+    Searches the whole stage by default; pass ``root`` to search only that
+    subtree. #38 needs the scoped form: a ``/World/groundPlane`` left by an
+    earlier create_physics_scene is not the loaded environment's floor, and on a
+    dirty stage it can sit at a different height entirely.
+
+    Deliberately narrow: a prim of type ``Plane`` carrying ``CollisionAPI``.
+    That is what the shipped environments author (simple_warehouse ships
+    ``GroundPlane/CollisionPlane``) and it cannot mistake scenery for a floor.
+
+    The looser rule considered here — any collision prim whose bbox is wide and
+    thin — also catches Mesh-authored floors, but a 3 x 1 x 0.05 m wall panel or
+    a tabletop matches it just as well, and suppressing a floor the caller needs
+    is a worse failure than the stacking this guards against. An environment
+    whose floor is a Mesh therefore still stacks; that is recorded on #37.
+    """
+    from pxr import Usd, UsdPhysics
+
+    try:
+        if root is None:
+            prims = stage.Traverse()
+        else:
+            root_prim = stage.GetPrimAtPath(root)
+            if not root_prim or not root_prim.IsValid():
+                return None
+            prims = Usd.PrimRange(root_prim)
+        for prim in prims:
+            if prim.GetTypeName() != "Plane":
+                continue
+            if prim.HasAPI(UsdPhysics.CollisionAPI):
+                return str(prim.GetPath())
+    except Exception:
+        # A stage that cannot be walked must not fail the whole call; fall
+        # through and create the plane, which is the pre-#37 behaviour.
+        return None
+    return None
+
+
+def _prim_world_z(stage, prim_path: str) -> Optional[float]:
+    """World-space Z of a prim's origin.
+
+    The world transform, not the local one: _reference_conversion rotates and
+    rescales Y-up / centimetre environments immediately before bounds are read,
+    so a floor prim's authored translate is not its height on the stage.
+    """
+    from pxr import Usd, UsdGeom
+
+    try:
+        prim = stage.GetPrimAtPath(prim_path)
+        if not prim or not prim.IsValid():
+            return None
+        matrix = UsdGeom.Xformable(prim).ComputeLocalToWorldTransform(Usd.TimeCode.Default())
+        return float(matrix.ExtractTranslation()[2])
+    except Exception:
+        return None
+
+
 def create_physics(
     adapter: IsaacAdapterBase, gravity: Optional[Sequence[float]] = None, scene_name: str = "PhysicsScene"
 ) -> Dict[str, Any]:
@@ -66,20 +125,36 @@ def create_physics(
         from pxr import UsdPhysics
 
         scene_path = adapter.create_physics_scene(gravity=gravity, scene_name=scene_name)
-        # Ground plane with collision so objects don't fall through. Only create
-        # it when missing: create_prim raises "A prim already exists at prim
-        # path" on a second call, and because the scene is established first the
-        # tool would report failure for work it had just completed — while
-        # naming groundPlane, which looks unrelated to the caller's request.
-        # Re-establishing a scene on a dirty stage is a normal thing to do, so
-        # this stays idempotent.
+        # Ground plane with collision so objects don't fall through — but only
+        # when the stage has no floor of its own. load_environment brings its
+        # own collision floor, and adding a second one leaves two: in
+        # simple_warehouse both happen to sit at z=0 so nothing looks wrong,
+        # while on an environment whose floor is elsewhere the objects rest at
+        # a height nothing on screen explains, and which plane wins is PhysX's
+        # decision rather than the caller's.
+        #
+        # Creation also stays idempotent: create_prim raises "A prim already
+        # exists at prim path" on a second call, and because the scene is
+        # established first the tool would report failure for work it had just
+        # completed — while naming groundPlane, which looks unrelated to the
+        # caller's request. Re-establishing a scene on a dirty stage is normal.
         stage = adapter.get_stage()
         floor_path = "/World/groundPlane"
-        if not stage.GetPrimAtPath(floor_path).IsValid():
-            adapter.create_prim(floor_path, "Plane")
-        gp = stage.GetPrimAtPath(floor_path)
-        if gp.IsValid() and not gp.HasAPI(UsdPhysics.CollisionAPI):
-            UsdPhysics.CollisionAPI.Apply(gp)
+        existing_floor = _find_collision_floor(stage)
+        ground_plane_created = False
+        if existing_floor is not None:
+            ground_plane = existing_floor
+        else:
+            ground_plane = floor_path
+            # A groundPlane that exists without collision reaches here, because
+            # a plane that holds nothing up is not a floor. Adopt it rather than
+            # recreating it.
+            if not stage.GetPrimAtPath(floor_path).IsValid():
+                adapter.create_prim(floor_path, "Plane")
+                ground_plane_created = True
+            gp = stage.GetPrimAtPath(floor_path)
+            if gp.IsValid() and not gp.HasAPI(UsdPhysics.CollisionAPI):
+                UsdPhysics.CollisionAPI.Apply(gp)
 
         # Bring physics up NOW, while the stage still holds no articulation.
         #
@@ -113,7 +188,15 @@ def create_physics(
         # it always has -- V6 answers "unknown" whenever detection fails.
         if adapter.engine != adapter.ENGINE_NEWTON:
             adapter._ensure_physics_world()
-        return {"status": "success", "message": f"Physics scene created at {scene_path}"}
+        return {
+            "status": "success",
+            "message": f"Physics scene created at {scene_path}",
+            # Which floor is authoritative, and whether this call supplied it.
+            # A bare success reads as "I made you a ground plane" even when the
+            # environment's own floor is the one objects will land on.
+            "ground_plane": ground_plane,
+            "ground_plane_created": ground_plane_created,
+        }
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
@@ -360,9 +443,50 @@ def _reference_conversion(adapter: IsaacAdapterBase, prim_path: str, url: str) -
     return applied
 
 
+def _collision_floor_outside(stage, root: str) -> Optional[str]:
+    """Path of a collision floor on the stage that is NOT part of ``root``'s subtree.
+
+    #37 stopped create_physics_scene stacking a plane on an environment, but
+    that guard runs once, at create_physics_scene time. Called the other way
+    round -- create_physics_scene first, then load_environment -- the
+    environment's own floor arrives afterwards and the stage has two collision
+    floors again, with the engine deciding which one wins. Measured on 6.0.1
+    PhysX, 6.0.1 Newton and 5.1.0: two collision Planes in the reversed order,
+    one in the documented order.
+
+    The order cannot simply be enforced here (deleting a floor the caller
+    authored would be worse), so the condition is reported instead.
+    """
+    from pxr import UsdPhysics
+
+    try:
+        for prim in stage.Traverse():
+            if prim.GetTypeName() != "Plane":
+                continue
+            if not prim.HasAPI(UsdPhysics.CollisionAPI):
+                continue
+            path = str(prim.GetPath())
+            if path == root or path.startswith(root.rstrip("/") + "/"):
+                continue
+            return path
+    except Exception:
+        return None
+    return None
+
+
 def _world_bounds(adapter: IsaacAdapterBase, prim_path: str) -> Dict[str, Any]:
     """Extent and floor height of a loaded environment, so the caller can place
-    objects on it without a second round trip."""
+    objects on it without a second round trip.
+
+    ``floor_height`` and ``bounds_min_z`` are two different measurements and were
+    once the same field. The bounding-box minimum is the environment's *lowest
+    authored geometry* — trim, a recessed drain, a slightly sunk prop all drag it
+    below the surface anything rests on. simple_warehouse reports -0.009 against
+    a collision floor at 0.0, so placing on it embedded the object 9mm and that
+    resolved as a settle or a jitter on the first step rather than as an error.
+    The size of the error is a property of whichever environment is loaded, so it
+    could not be corrected for once and reused.
+    """
     try:
         from pxr import Usd, UsdGeom
 
@@ -375,10 +499,38 @@ def _world_bounds(adapter: IsaacAdapterBase, prim_path: str) -> Dict[str, Any]:
         if rng.IsEmpty():
             return {}
         mn, mx = rng.GetMin(), rng.GetMax()
-        return {
+        bounds: Dict[str, Any] = {
             "extent": [round(mx[i] - mn[i], 3) for i in range(3)],
-            "floor_height": round(mn[2], 3),
+            "bounds_min_z": round(mn[2], 3),
         }
+
+        # Scoped to the environment: a groundPlane from an earlier
+        # create_physics_scene is not this environment's floor.
+        floor_path = _find_collision_floor(stage, root=prim_path)
+        floor_z = _prim_world_z(stage, floor_path) if floor_path else None
+        if floor_z is not None:
+            bounds["floor_height"] = round(floor_z, 3)
+            bounds["floor_height_source"] = "collision_floor"
+            bounds["floor_prim"] = floor_path
+        else:
+            # An environment whose floor is a Mesh has no collision Plane to
+            # measure. Falling back to the bbox minimum is the old, wrong
+            # answer, so it is labelled rather than handed back looking
+            # measured — the same treatment position_source and
+            # velocity_warning give a value that may not mean what it looks
+            # like. Omitting it instead would push the caller into raw USD to
+            # find the floor, which is the round trip this field exists to
+            # remove.
+            bounds["floor_height"] = bounds["bounds_min_z"]
+            bounds["floor_height_source"] = "bounds_min_z"
+            bounds["floor_height_warning"] = (
+                "No collision Plane was found in this environment, so floor_height is the "
+                "bounding-box minimum — the lowest authored geometry, which is not necessarily "
+                "the surface objects rest on. An object placed here may spawn embedded in the "
+                "floor or hovering above it. Verify with a physics raycast or get_prim_info on "
+                "the environment's floor prim before relying on it."
+            )
+        return bounds
     except Exception:
         return {}
 
@@ -449,7 +601,23 @@ def load_environment(
             result["corrections"] = corrections
         if bounds:
             result["bounds"] = bounds
-        else:
+
+        # Only a warning when BOTH floors are actually there: the environment's
+        # own, and one that predates it. The floor test recognises a collision
+        # Plane only, so a Mesh-floored environment cannot be checked this way
+        # and stays silent rather than guessing.
+        if stage is not None:
+            foreign_floor = _collision_floor_outside(stage, target)
+            if foreign_floor is not None and _find_collision_floor(stage, root=target) is not None:
+                result["collision_floor_warning"] = (
+                    f"The stage already carried a collision floor at {foreign_floor} before this "
+                    "environment loaded, and the environment brings its own — so there are now two, "
+                    "and which one objects land on is the physics engine's decision. Call "
+                    "load_environment BEFORE create_physics_scene (that order adds no second floor), "
+                    f"or delete {foreign_floor}."
+                )
+
+        if not bounds:
             # bounds carry floor_height, which is what lets a caller place
             # objects on the ground. Omitting them silently left the caller to
             # guess z on a stage whose scale it has not seen.

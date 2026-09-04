@@ -74,6 +74,19 @@ Leave these alone — nothing to change:
 - **`pyproject.toml`** — dynamic version, reads `__init__.py`.
 - **`uv.lock`** — the editable root package carries no pinned `version` line.
 
+## GitHub templates are mandatory
+
+**Every issue and every PR is written by filling in the repo's template, not by composing a document that resembles it.** Build the body *from* the template file — [.github/PULL_REQUEST_TEMPLATE.md](.github/PULL_REQUEST_TEMPLATE.md), [.github/ISSUE_TEMPLATE/bug-report.yml](.github/ISSUE_TEMPLATE/bug-report.yml), [.github/ISSUE_TEMPLATE/feature-request.yml](.github/ISSUE_TEMPLATE/feature-request.yml) — then fill it in:
+
+- **Every heading and every checkbox line stays byte-identical.** Tick a box (`- [ ]` → `- [x]`) and append your answer *after* the label; never reword, shorten or drop the label. `Other (please specify):` does not become `Other`, and `(unit tests alone are not sufficient)` does not get trimmed.
+- **No section is dropped**, including ones that look like boilerplate. `## Who can review?` is part of the template.
+- **Strip the `<!-- -->` guidance comments**; keep everything else.
+- Extra sections *after* the template's own are fine — measurements, controls, reviewer notes.
+
+Then **verify before posting**: diff the composed body against the template and confirm every non-comment line is present verbatim. Writing the body freehand and eyeballing it has failed twice; the template is the source, and the check is mechanical.
+
+The runtime checkboxes are a claim about what you ran. Tick only what you actually ran and say which you did not — the template says stating a gap is fine and implying coverage you do not have is not, and that is the rule, not a suggestion.
+
 ## Changelog and issues
 
 `CHANGELOG.md` follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/): `Added` / `Changed` / `Fixed`, newest version first, and a dated heading when the version is cut.

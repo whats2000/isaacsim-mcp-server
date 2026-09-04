@@ -285,11 +285,15 @@ def main() -> int:
     resp = send(args.host, args.port, "scene.get_prim_info", {"prim_path": "/World/ResetCube"})
 
     def _back_at_spawn(r: Dict[str, Any]) -> tuple[bool, str]:
-        # get_prim_info nests the transform: {"transform": {"position": [...]}}.
-        # There has never been a top-level "position" key.
-        position = (r.get("transform") or {}).get("position")
+        # get_prim_info nests the transform, and names both frames explicitly:
+        # {"transform": {"position_local": [...], "position_world": [...]}}.
+        # There has never been a top-level position key. The cube sits directly
+        # under the stage root, so either frame answers this; world is the one
+        # that stays right if the check is ever moved under a parent.
+        transform = r.get("transform") or {}
+        position = transform.get("position_world") or transform.get("position_local")
         if not position:
-            return False, f"no transform.position in prim_info (keys: {sorted(r)})"
+            return False, f"no transform position in prim_info (keys: {sorted(transform)})"
         z = position[2]
         if abs(z - spawn_z) > 1e-3:
             return False, f"expected z~={spawn_z} after stop, got z={z}"

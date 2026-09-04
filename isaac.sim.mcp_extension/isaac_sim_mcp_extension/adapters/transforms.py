@@ -134,8 +134,37 @@ def set_transform(
         op.Set(Gf.Vec3d(*scale))
 
 
+def world_translation(xformable) -> Optional[list]:
+    """World-space translation of a prim, or None when it cannot be computed."""
+    from pxr import Usd
+
+    try:
+        matrix = xformable.ComputeLocalToWorldTransform(Usd.TimeCode.Default())
+        t = matrix.ExtractTranslation()
+        return [float(t[0]), float(t[1]), float(t[2])]
+    except Exception:
+        return None
+
+
 def read_transform(xformable) -> Dict[str, Any]:
-    """Return position, rotation (XYZ euler degrees) and scale of a prim.
+    """Return position (both frames), rotation (XYZ euler degrees) and scale.
+
+    There is deliberately no bare ``position``. It used to hold the *local*
+    (parent-relative) pose with nothing saying so, and for a prim under a
+    transformed parent that number is not where the object is: a child at local
+    (0.25, 0, 0) under a parent at (1, 2, 0.5) reported [0.25, 0, 0] while
+    ``actual_size`` in the same response was world-space. Robot links are where
+    it bit -- ``/World/Franka/fr3_hand_tcp`` -- because Isaac's FR3 is a flat
+    hierarchy rooted at the articulation, so a robot at the default origin makes
+    the two frames coincide and the tool look correct.
+
+    Naming one of them ``position`` and the other ``position_world`` would keep
+    the trap: the unqualified name reads as the default and the qualified one as
+    a special case. Both are named, so a caller has to choose.
+
+    ``rotation`` and ``scale`` stay unqualified because they are local by
+    definition -- they are the values ``transform_object`` writes back, in the
+    same convention. Only position has a world reading worth deriving.
 
     The rotation is taken from the orthonormalized local matrix, so it is
     correct whichever op authored it, and scale cannot corrupt it -- reading
@@ -154,12 +183,60 @@ def read_transform(xformable) -> Dict[str, Any]:
 
     scale = [Gf.Vec3d(matrix[i][0], matrix[i][1], matrix[i][2]).GetLength() for i in range(3)]
 
-    return {
-        "position": [translation[0], translation[1], translation[2]],
+    result: Dict[str, Any] = {
+        "position_local": [translation[0], translation[1], translation[2]],
         "rotation": [round(float(rx), 6), round(float(ry), 6), round(float(rz), 6)],
         "rotation_units": "degrees",
         "scale": [round(float(v), 6) for v in scale],
     }
+
+    world = world_translation(xformable)
+    if world is not None:
+        result["position_world"] = world
+        result["position_world_source"] = "usd"
+    else:
+        # Never fall back to the local value under a world name -- that is the
+        # #39 bug restated. Say the reading is missing instead.
+        result["position_world_warning"] = (
+            "The world transform for this prim could not be computed, so only position_local "
+            "(parent-relative) is reported. Do not treat position_local as a world coordinate."
+        )
+    return result
+
+
+def local_euler_for_world_rotation(stage, prim_path, world_euler):
+    """Express a world-frame XYZ euler rotation in the prim's parent frame.
+
+    ``look_at_euler`` derives an orientation in world space, but
+    ``set_transform`` authors a *local* xform op, so writing one into the other
+    aims a nested prim wrong by exactly its parent's rotation. Under a parent
+    that is only translated the two frames coincide, which is why this survived
+    a live control measured on a translate-only rig; with the parent rotated 90
+    degrees about Z the camera missed a world-origin target by 74.651 degrees on
+    all three runtimes, and produced a plausible-looking rotation while doing it.
+
+    Returns ``None`` when the parent transform cannot be read, so the caller can
+    label the value it falls back to rather than present it as converted.
+    """
+    from pxr import Gf, Usd, UsdGeom
+
+    try:
+        prim = stage.GetPrimAtPath(prim_path)
+        xformable = UsdGeom.Xformable(prim)
+        to_world = xformable.ComputeLocalToWorldTransform(Usd.TimeCode.Default())
+        # USD composes row-vector style: local_to_world = local * parent.
+        parent = xformable.GetLocalTransformation().GetInverse() * to_world
+        parent.Orthonormalize()
+
+        parent_rotation = Gf.Matrix4d().SetRotate(parent.ExtractRotation())
+        world_rotation = Gf.Matrix4d().SetRotate(_euler_to_quat(world_euler))
+        local_rotation = world_rotation * parent_rotation.GetInverse()
+        local_rotation.Orthonormalize()
+
+        rz, ry, rx = local_rotation.ExtractRotation().Decompose(Gf.Vec3d(0, 0, 1), Gf.Vec3d(0, 1, 0), Gf.Vec3d(1, 0, 0))
+        return [round(float(rx), 6), round(float(ry), 6), round(float(rz), 6)]
+    except Exception:
+        return None
 
 
 def look_at_euler(eye, target, up=(0.0, 0.0, 1.0)):

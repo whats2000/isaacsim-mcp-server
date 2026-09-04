@@ -66,7 +66,11 @@ Scripts/Action Graphs operate WITHIN frames (runtime-level): control loops, IK, 
 ## Workflow
 
 ### Scene Setup
-1. get_scene_info → 2. create_physics_scene → 3. create_robot / create_object → 4. get_prim_info (verify sizes)
+1. get_scene_info → 2. load_environment (if using one) → 3. create_physics_scene → 4. create_robot / create_object → 5. get_prim_info (verify sizes)
+- load_environment goes BEFORE create_physics_scene. An environment brings its own collision floor,
+  and create_physics_scene skips adding a second one only if that floor is already on the stage — it
+  checks once, when it runs. The reverse order leaves two floors and the engine decides which wins;
+  load_environment reports it as collision_floor_warning.
 - create_robot: call list_available_robots first for exact keys (lowercase, no spaces, e.g. "frankafr3")
 - Always get_prim_info to query actual positions/sizes BEFORE writing controller scripts
 

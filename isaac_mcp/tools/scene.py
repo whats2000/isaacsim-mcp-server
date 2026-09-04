@@ -46,7 +46,25 @@ def register_tools(mcp: FastMCP, get_connection: "Callable[[], IsaacConnection]"
 
     @mcp.tool("create_physics_scene")
     def create_physics_scene(gravity: Optional[List[float]] = None, scene_name: str = "PhysicsScene") -> str:
-        """Create a physics scene with ground plane. Call get_scene_info first to verify connection.
+        """Create a physics scene, adding a ground plane only if the stage lacks one.
+        Call get_scene_info first to verify connection.
+
+        A loaded environment usually brings its own collision floor, and this does
+        not add a second one on top of it — provided load_environment ran BEFORE
+        this call. The check happens once, here: call this first and the
+        environment's floor arrives afterwards, leaving two collision floors with
+        the engine deciding which one objects land on. load_environment reports
+        that case as "collision_floor_warning". The response reports "ground_plane" —
+        the floor objects will actually land on — and "ground_plane_created", false
+        when the stage already had one. Read the floor's height from that prim
+        rather than assuming z=0; an environment's floor is not always at the origin.
+
+        The check recognises a collision-enabled prim of type Plane, which is what
+        the shipped environments author. An environment whose floor is a Mesh is
+        NOT recognised, so a second plane is added and two collision floors end up
+        on the stage — which one wins is the physics engine's decision. When
+        "ground_plane_created" is true after loading an environment, verify the
+        floor before placing anything on it.
 
         Args:
             gravity: Gravity vector [x, y, z]. Default is standard gravity.
@@ -66,9 +84,10 @@ def register_tools(mcp: FastMCP, get_connection: "Callable[[], IsaacConnection]"
     def clear_scene(keep_physics: bool = False, keep_environment: bool = False) -> str:
         """Remove all prims from the scene.
 
-        Also empties any environment loaded by load_environment, so a later
-        create_physics_scene does not stack a second ground under the first —
-        it always creates one. The stage's defaultLight is always kept — a stage with no
+        Also empties any environment loaded by load_environment, which removes
+        that environment's collision floor along with it — so a later
+        create_physics_scene finds no floor and supplies its own.
+        The stage's defaultLight is always kept — a stage with no
         light renders black, which looks like a broken camera.
 
         Args:
@@ -122,11 +141,24 @@ def register_tools(mcp: FastMCP, get_connection: "Callable[[], IsaacConnection]"
     def get_prim_info(prim_path: str) -> str:
         """Get detailed information about a specific prim.
 
-        Returns type, children, and a transform block holding position,
-        rotation [rx, ry, rz] in degrees (XYZ order, the same convention
-        transform_object accepts), and scale. For geometric prims (Cube,
-        Sphere, Cylinder, Cone, Capsule), also returns actual_size [x, y, z]
-        in meters accounting for scale and default primitive dimensions.
+        Returns type, children, and a transform block. Position is reported in
+        both frames, under explicit names — there is no bare "position":
+          position_local — parent-relative, the value transform_object writes.
+          position_world — where the prim actually is on the stage. Use this to
+                           reason about distances, reach, or contact. For a
+                           robot link such as /World/Franka/fr3_hand_tcp the two
+                           differ by the robot's own pose.
+        position_world_source is "usd" (derived from the authored transform) or
+        "physics" (measured, on Newton). On Newton a body that has been
+        simulated may carry position_warning saying both values are its spawn
+        pose; read it through get_physics_state instead.
+
+        Also returns rotation [rx, ry, rz] in degrees (XYZ order, the same
+        convention transform_object accepts) and scale — both local, like
+        position_local. For geometric prims (Cube, Sphere, Cylinder, Cone,
+        Capsule), also returns actual_size [x, y, z] in meters accounting for
+        scale and default primitive dimensions (world-space, like
+        position_world).
 
         Args:
             prim_path: The USD prim path to inspect.
@@ -156,10 +188,18 @@ def register_tools(mcp: FastMCP, get_connection: "Callable[[], IsaacConnection]"
 
         Many shipped environments are authored Y-up and/or in centimeters; those
         are rotated and rescaled to match the stage, and the response reports what
-        was applied under "corrections". It also returns "bounds" with the
-        environment's extent and floor_height, so objects can be placed on the
-        ground without a second query. Read prim_path from the response rather
+        was applied under "corrections". Read prim_path from the response rather
         than assuming it — it defaults to a named child of /Environment.
+
+        "bounds" carries two different heights, so use the right one:
+          floor_height  — the surface objects rest on, measured from the
+                          environment's collision floor. Place with
+                          position=[x, y, floor_height].
+          bounds_min_z  — the lowest authored geometry (trim, a recessed drain,
+                          a sunk prop). Not a placement height.
+        floor_height_source says which was used. When it reads "bounds_min_z" no
+        collision floor could be measured and floor_height is a fallback that may
+        be below the real surface — floor_height_warning explains it.
 
         Args:
             environment: Environment name or search term (e.g. "warehouse", "hospital", "office").

@@ -91,21 +91,51 @@ def create_camera(
         _cam = adapter.create_camera(prim_path, resolution=res)
 
         aimed_at = None
+        rotation_warning = None
         if target is not None:
             # Aiming needs a position to aim from. Fall back to the prim's
             # current one so target alone still works on an existing camera.
             eye = position
             if eye is None:
                 try:
-                    eye = (adapter.get_prim_transform(prim_path) or {}).get("position")
+                    current = adapter.get_prim_transform(prim_path) or {}
+                    # target is a world coordinate, so the eye must be one too.
+                    # This used to read "position", which was the prim's
+                    # parent-relative pose — a nested camera was aimed from the
+                    # wrong frame and still produced a rotation, so it failed
+                    # silently (#39). position_local is the last resort: for a
+                    # prim directly under the stage root the two coincide.
+                    eye = current.get("position_world") or current.get("position_local")
                 except Exception:
                     eye = None
             if eye is not None:
-                from ..adapters.transforms import look_at_euler
+                from ..adapters.transforms import local_euler_for_world_rotation, look_at_euler
 
                 aimed = look_at_euler(eye, target)
                 if aimed is not None:
-                    rotation, aimed_at = aimed, [float(v) for v in target]
+                    aimed_at = [float(v) for v in target]
+                    # look_at_euler works in world space, but set_prim_transform
+                    # authors a LOCAL xform op — so a nested camera was aimed
+                    # wrong by its parent's rotation, and still produced a
+                    # plausible rotation while doing it. Fixing the eye point
+                    # (#39) only fixed half of the same frame mix.
+                    try:
+                        stage = adapter.get_stage()
+                    except Exception:
+                        stage = None
+                    local_aim = None if stage is None else local_euler_for_world_rotation(stage, prim_path, aimed)
+                    if local_aim is not None:
+                        rotation = local_aim
+                    else:
+                        # Still the best aim available, and exact for a camera
+                        # directly under the stage root. Label it rather than
+                        # hand back a world value looking like an applied one.
+                        rotation = aimed
+                        rotation_warning = (
+                            "The parent transform could not be read, so this orientation is the world-space "
+                            "aim written as a local rotation. That is exact only for a camera whose parents "
+                            "are unrotated; under a rotated parent the camera is off by the parent's rotation."
+                        )
 
         if position or rotation:
             adapter.set_prim_transform(prim_path, position=position, rotation=rotation)
@@ -113,6 +143,8 @@ def create_camera(
         if aimed_at is not None:
             result["aimed_at"] = aimed_at
             result["rotation"] = rotation
+            if rotation_warning is not None:
+                result["rotation_warning"] = rotation_warning
         if first_of_session:
             # Measured on 6.0.1-rc.7, cold-booted: the first RTX camera created
             # in a Kit session cannot be removed. delete_object reports success
