@@ -322,6 +322,20 @@ class IsaacAdapterV6(IsaacAdapterBase):
                 transform["position_world"] = simulated
                 transform["position_world_source"] = "physics"
                 transform.pop("position_world_warning", None)
+                # position_world is now measured, but position_local still came
+                # from USD -- the spawn pose, because Newton never writes back
+                # to it. Replacing only the world value leaves the two fields
+                # disagreeing about when they were taken, with nothing saying
+                # so: the failure branch below carries a warning, and this, the
+                # branch that actually serves data, carried none. Deriving a
+                # local value from the measured world pose would need the
+                # parent transform and would silently invent precision the USD
+                # xform does not have, so label it instead.
+                transform["position_local_warning"] = (
+                    "position_world is measured from physics, but position_local is the authored USD pose "
+                    "— Newton keeps simulated poses in Fabric and never writes them back, so for a body "
+                    "that has moved this is its spawn pose. Use position_world, or get_physics_state."
+                )
             elif self._prim_is_rigid_body(prim):
                 # Only rigid bodies move under physics; for everything else USD
                 # is the authority and a tag would be noise.

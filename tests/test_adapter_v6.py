@@ -1184,3 +1184,61 @@ def test_v6_puts_the_fabric_pose_in_position_world_not_over_the_local_one():
     assert '"position_world"' in src, "the Fabric pose must land in position_world"
     assert '"physics"' in src, "a physics-sourced world position must say so"
     assert 'transform["position"]' not in src, "the Fabric pose must not overwrite the local pose"
+
+
+def test_v6_labels_the_stale_local_pose_when_the_fabric_read_succeeds(monkeypatch):
+    """On Newton a *served* Fabric read leaves position_local at the spawn pose.
+
+    The warning covering this only fires in the branch where the physics read
+    FAILED. When it succeeds, position_world is replaced with the measured pose
+    and position_local is left as the authored USD value -- stale, and now
+    unlabelled, because the warning is in the other branch.
+
+    That is #39 relocated rather than removed: the truthfulness of
+    position_local varies by engine and prim type, silently. Before the frames
+    were split the Fabric value overwrote the field outright, so no stale local
+    value was exposed at all -- this is a new surface.
+
+    The numbers here are the ones f4406df recorded as its own live control: a
+    sphere under a parent at (1,2,0), spawned at local z=2.0, read back after 60
+    steps. With the parent at z=0 a true local z would equal the world z, so
+    position_local [0.25, 0, 2.0] against position_world [..., 0.09932] is stale
+    by the whole fall.
+    """
+    import isaac_sim_mcp_extension.adapters.v6 as v6_mod
+
+    adapter = v6_mod.IsaacAdapterV6()
+    monkeypatch.setattr(type(adapter), "_engine", property(lambda self: "newton"))
+
+    class _Prim:
+        def IsValid(self):
+            return True
+
+    class _Stage:
+        def GetPrimAtPath(self, path):
+            return _Prim()
+
+    adapter.get_stage = lambda: _Stage()
+    adapter._try_articulation = lambda fn: ([1.25, 2.0, 0.09932], True)
+
+    import pxr.UsdGeom as _usdgeom
+
+    monkeypatch.setattr(_usdgeom, "Xformable", lambda prim: prim, raising=False)
+
+    original = v6_mod.read_transform
+    v6_mod.read_transform = lambda xformable: {
+        "position_local": [0.25, 0.0, 2.0],
+        "position_world": [1.25, 2.0, 2.0],
+        "position_world_source": "usd",
+    }
+    try:
+        out = adapter.get_prim_transform("/World/Rig/Ball")
+    finally:
+        v6_mod.read_transform = original
+
+    assert out["position_world"] == [1.25, 2.0, 0.09932], "the measured pose belongs in position_world"
+    assert out["position_world_source"] == "physics"
+    assert "position_local_warning" in out, (
+        "position_local is the authored spawn pose while position_world is measured — say so, "
+        "or the two fields silently disagree about when they were taken"
+    )

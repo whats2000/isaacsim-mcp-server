@@ -50,7 +50,11 @@ def register_tools(mcp: FastMCP, get_connection: "Callable[[], IsaacConnection]"
         Call get_scene_info first to verify connection.
 
         A loaded environment usually brings its own collision floor, and this does
-        not add a second one on top of it. The response reports "ground_plane" —
+        not add a second one on top of it — provided load_environment ran BEFORE
+        this call. The check happens once, here: call this first and the
+        environment's floor arrives afterwards, leaving two collision floors with
+        the engine deciding which one objects land on. load_environment reports
+        that case as "collision_floor_warning". The response reports "ground_plane" —
         the floor objects will actually land on — and "ground_plane_created", false
         when the stage already had one. Read the floor's height from that prim
         rather than assuming z=0; an environment's floor is not always at the origin.

@@ -204,6 +204,41 @@ def read_transform(xformable) -> Dict[str, Any]:
     return result
 
 
+def local_euler_for_world_rotation(stage, prim_path, world_euler):
+    """Express a world-frame XYZ euler rotation in the prim's parent frame.
+
+    ``look_at_euler`` derives an orientation in world space, but
+    ``set_transform`` authors a *local* xform op, so writing one into the other
+    aims a nested prim wrong by exactly its parent's rotation. Under a parent
+    that is only translated the two frames coincide, which is why this survived
+    a live control measured on a translate-only rig; with the parent rotated 90
+    degrees about Z the camera missed a world-origin target by 74.651 degrees on
+    all three runtimes, and produced a plausible-looking rotation while doing it.
+
+    Returns ``None`` when the parent transform cannot be read, so the caller can
+    label the value it falls back to rather than present it as converted.
+    """
+    from pxr import Gf, Usd, UsdGeom
+
+    try:
+        prim = stage.GetPrimAtPath(prim_path)
+        xformable = UsdGeom.Xformable(prim)
+        to_world = xformable.ComputeLocalToWorldTransform(Usd.TimeCode.Default())
+        # USD composes row-vector style: local_to_world = local * parent.
+        parent = xformable.GetLocalTransformation().GetInverse() * to_world
+        parent.Orthonormalize()
+
+        parent_rotation = Gf.Matrix4d().SetRotate(parent.ExtractRotation())
+        world_rotation = Gf.Matrix4d().SetRotate(_euler_to_quat(world_euler))
+        local_rotation = world_rotation * parent_rotation.GetInverse()
+        local_rotation.Orthonormalize()
+
+        rz, ry, rx = local_rotation.ExtractRotation().Decompose(Gf.Vec3d(0, 0, 1), Gf.Vec3d(0, 1, 0), Gf.Vec3d(1, 0, 0))
+        return [round(float(rx), 6), round(float(ry), 6), round(float(rz), 6)]
+    except Exception:
+        return None
+
+
 def look_at_euler(eye, target, up=(0.0, 0.0, 1.0)):
     """XYZ euler degrees that aim a camera at ``target`` from ``eye``.
 

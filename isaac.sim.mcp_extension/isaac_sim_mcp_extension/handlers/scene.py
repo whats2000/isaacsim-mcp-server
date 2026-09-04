@@ -443,6 +443,37 @@ def _reference_conversion(adapter: IsaacAdapterBase, prim_path: str, url: str) -
     return applied
 
 
+def _collision_floor_outside(stage, root: str) -> Optional[str]:
+    """Path of a collision floor on the stage that is NOT part of ``root``'s subtree.
+
+    #37 stopped create_physics_scene stacking a plane on an environment, but
+    that guard runs once, at create_physics_scene time. Called the other way
+    round -- create_physics_scene first, then load_environment -- the
+    environment's own floor arrives afterwards and the stage has two collision
+    floors again, with the engine deciding which one wins. Measured on 6.0.1
+    PhysX, 6.0.1 Newton and 5.1.0: two collision Planes in the reversed order,
+    one in the documented order.
+
+    The order cannot simply be enforced here (deleting a floor the caller
+    authored would be worse), so the condition is reported instead.
+    """
+    from pxr import UsdPhysics
+
+    try:
+        for prim in stage.Traverse():
+            if prim.GetTypeName() != "Plane":
+                continue
+            if not prim.HasAPI(UsdPhysics.CollisionAPI):
+                continue
+            path = str(prim.GetPath())
+            if path == root or path.startswith(root.rstrip("/") + "/"):
+                continue
+            return path
+    except Exception:
+        return None
+    return None
+
+
 def _world_bounds(adapter: IsaacAdapterBase, prim_path: str) -> Dict[str, Any]:
     """Extent and floor height of a loaded environment, so the caller can place
     objects on it without a second round trip.
@@ -570,7 +601,23 @@ def load_environment(
             result["corrections"] = corrections
         if bounds:
             result["bounds"] = bounds
-        else:
+
+        # Only a warning when BOTH floors are actually there: the environment's
+        # own, and one that predates it. The floor test recognises a collision
+        # Plane only, so a Mesh-floored environment cannot be checked this way
+        # and stays silent rather than guessing.
+        if stage is not None:
+            foreign_floor = _collision_floor_outside(stage, target)
+            if foreign_floor is not None and _find_collision_floor(stage, root=target) is not None:
+                result["collision_floor_warning"] = (
+                    f"The stage already carried a collision floor at {foreign_floor} before this "
+                    "environment loaded, and the environment brings its own — so there are now two, "
+                    "and which one objects land on is the physics engine's decision. Call "
+                    "load_environment BEFORE create_physics_scene (that order adds no second floor), "
+                    f"or delete {foreign_floor}."
+                )
+
+        if not bounds:
             # bounds carry floor_height, which is what lets a caller place
             # objects on the ground. Omitting them silently left the caller to
             # guess z on a stage whose scale it has not seen.

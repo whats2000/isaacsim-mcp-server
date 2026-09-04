@@ -196,3 +196,85 @@ def test_does_not_reapply_collision_to_a_plane_that_already_has_it(collision_api
     scene_handlers.create_physics(_adapter(stage))
 
     collision_api.Apply.assert_not_called()
+
+
+# ── #37's guarantee only holds in one call order ─────────────────────────────
+
+
+@pytest.fixture
+def env_load(monkeypatch):
+    """Mock the asset lookup and bounds so load_environment can be driven offline."""
+    from pxr import Usd
+
+    monkeypatch.setattr(
+        scene_handlers,
+        "_get_env_library",
+        lambda adapter: {"simple_warehouse": {"description": "Simple Warehouse", "asset_path": "/w.usd"}},
+        raising=False,
+    )
+    monkeypatch.setattr(scene_handlers, "_reference_conversion", lambda *a, **k: None, raising=False)
+    monkeypatch.setattr(scene_handlers, "_world_bounds", lambda *a, **k: {"floor_height": 0.0}, raising=False)
+    monkeypatch.setattr(
+        Usd,
+        "PrimRange",
+        lambda prim: [p for p in prim.__stage__.Traverse() if str(p.GetPath()).startswith(str(prim.GetPath()))],
+        raising=False,
+    )
+
+
+def _env_adapter(stage):
+    a = MagicMock()
+    a.get_stage.return_value = stage
+    a.get_assets_root_path.return_value = ""
+    return a
+
+
+ENV_ROOT = "/Environment/simple_warehouse"
+
+
+def _env_stage(prims):
+    stage = _Stage(prims)
+    for p in stage.Traverse():
+        p.__stage__ = stage
+    root = _Prim(ENV_ROOT, "Xform")
+    root.__stage__ = stage
+    stage.add(root)
+    return stage
+
+
+def test_load_environment_warns_when_the_stage_already_had_a_collision_floor(env_load):
+    """#37's guard runs once, at create_physics_scene time, so it only holds in one order.
+
+    Reversed — create_physics_scene then load_environment — the environment's
+    own floor arrives afterwards and the stage has two collision floors again.
+    Measured on 6.0.1 PhysX, 6.0.1 Newton and 5.1.0: two collision Planes, both
+    at z=0, while the documented order left exactly one.
+
+    Nothing steered a caller to the safe order: the server's Scene Setup block
+    never mentioned load_environment at all.
+    """
+    stage = _env_stage(
+        [
+            _Prim("/World/groundPlane", "Plane", collision=True),
+            _Prim(ENV_ROOT + "/GroundPlane/CollisionPlane", "Plane", collision=True),
+        ]
+    )
+
+    result = scene_handlers.load_environment(_env_adapter(stage), environment="simple_warehouse")
+
+    assert result["status"] == "success"
+    assert "collision_floor_warning" in result, (
+        "loading an environment onto a stage that already has a collision floor leaves two, "
+        "and which one wins is the physics engine's decision"
+    )
+    assert "/World/groundPlane" in result["collision_floor_warning"]
+
+
+def test_load_environment_is_quiet_when_the_only_floor_is_the_environments_own(env_load):
+    """Negative control: a warning that always fires would pass the test above."""
+    stage = _env_stage([_Prim(ENV_ROOT + "/GroundPlane/CollisionPlane", "Plane", collision=True)])
+
+    result = scene_handlers.load_environment(_env_adapter(stage), environment="simple_warehouse")
+
+    assert result["status"] == "success"
+    assert "collision_floor_warning" not in result

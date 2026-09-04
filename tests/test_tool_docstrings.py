@@ -153,3 +153,44 @@ def test_the_engine_guidance_stays_short():
     block = src[src.index("### Physics engine") : src.index("### Physics engine") + 800]
     block = block.split('"""')[0]
     assert len(block.splitlines()) <= 9, f"engine guidance grew to {len(block.splitlines())} lines"
+
+
+def _tool_docstring(filename, func):
+    """The docstring of one tool function, so a check cannot be satisfied by
+    matching text somewhere else in the module."""
+    import ast
+
+    tree = ast.parse(_read_tool_source(filename))
+    for node in ast.walk(tree):
+        if isinstance(node, ast.FunctionDef) and node.name == func:
+            return ast.get_docstring(node) or ""
+    raise AssertionError(f"{func} not found in {filename}")
+
+
+def test_scene_setup_instructions_put_load_environment_before_create_physics_scene():
+    """#37's guard only holds in one order, and the setup block prescribed the other.
+
+    create_physics_scene skips its own ground plane when the stage already has
+    a collision floor — but it checks once, when it runs. Called before
+    load_environment, the environment's floor lands afterwards and the stage
+    carries two. Measured on 6.0.1 PhysX, 6.0.1 Newton and 5.1.0: two collision
+    Planes reversed, one in the documented order.
+
+    The Scene Setup line never mentioned load_environment at all, so an agent
+    following it literally hit the stacking case every time.
+    """
+    src = _read_server_source()
+    setup = src.split("### Scene Setup")[1].split("###")[0]
+
+    assert "load_environment" in setup, "the setup order must say where load_environment goes"
+    assert setup.index("load_environment") < setup.index("create_physics_scene"), (
+        "load_environment must come before create_physics_scene, or the stage ends up with two floors"
+    )
+
+
+def test_create_physics_scene_docstring_qualifies_the_no_second_floor_claim():
+    """The docstring stated the guarantee unconditionally; it holds in one order only."""
+    doc = _tool_docstring("scene.py", "create_physics_scene")
+
+    assert "load_environment" in doc, "the claim depends on load_environment running first — say so"
+    assert "before" in doc.lower()
