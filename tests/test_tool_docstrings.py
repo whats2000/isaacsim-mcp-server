@@ -194,3 +194,59 @@ def test_create_physics_scene_docstring_qualifies_the_no_second_floor_claim():
 
     assert "load_environment" in doc, "the claim depends on load_environment running first — say so"
     assert "before" in doc.lower()
+
+
+# ── the instruction budget ───────────────────────────────────────────────────
+
+# Every tool docstring is in the agent's context on EVERY call, so the block of
+# them is a standing cost paid per request, not per use of that tool. Each fix
+# to this server has added a paragraph explaining what went wrong, and the
+# explanations came to outweigh the instructions: 23,350 characters across the
+# tool docstrings (~5.8k tokens) before this budget existed, trimmed to 19,730
+# (~4.9k) by moving rationale out without dropping any contract.
+#
+# That dilutes the lines an agent must actually act on. Rationale belongs in
+# code comments and commit messages, which cost the agent nothing; docstrings
+# carry the contract -- fields returned, ordering rules, actionable limits.
+#
+# These are ratchets. Lower them when a docstring gets tighter; raising one is
+# a decision to spend context, and should be argued for in the commit.
+MAX_TOOL_DOCSTRING_CHARS = 19800
+MAX_SINGLE_DOCSTRING_LINES = 24
+
+
+def _tool_docstrings():
+    import ast
+    import glob
+
+    out = {}
+    for path in sorted(glob.glob(os.path.join(TOOLS_DIR, "*.py"))):
+        with open(path) as f:
+            tree = ast.parse(f.read())
+        for node in ast.walk(tree):
+            if isinstance(node, ast.FunctionDef):
+                doc = ast.get_docstring(node)
+                if doc:
+                    out["%s:%s" % (os.path.basename(path), node.name)] = doc
+    return out
+
+
+def test_tool_docstrings_stay_within_the_instruction_budget():
+    docs = _tool_docstrings()
+    total = sum(len(d) for d in docs.values())
+
+    assert total <= MAX_TOOL_DOCSTRING_CHARS, (
+        "tool docstrings total %d chars (~%dk tokens), over the %d budget — "
+        "move rationale into code comments and keep the contract" % (total, total // 1000, MAX_TOOL_DOCSTRING_CHARS)
+    )
+
+
+def test_no_single_tool_docstring_dominates_the_budget():
+    docs = _tool_docstrings()
+    oversized = {k: len(v.splitlines()) for k, v in docs.items() if len(v.splitlines()) > MAX_SINGLE_DOCSTRING_LINES}
+
+    assert not oversized, (
+        "these docstrings are longer than %d lines: %s — an agent skims them, "
+        "and the actionable line gets lost in the explanation"
+        % (MAX_SINGLE_DOCSTRING_LINES, ", ".join("%s (%d)" % (k, v) for k, v in sorted(oversized.items())))
+    )

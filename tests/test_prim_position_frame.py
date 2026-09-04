@@ -377,6 +377,47 @@ def test_observe_prims_falls_back_to_the_world_frame(filename):
     )
 
 
+def _state_position_keys(src):
+    """Keys assigned as `state[...]` in `step`, for the position field."""
+    import ast
+
+    keys = []
+    for node in ast.walk(ast.parse(src)):
+        if not isinstance(node, ast.Assign):
+            continue
+        for tgt in node.targets:
+            if (
+                isinstance(tgt, ast.Subscript)
+                and isinstance(tgt.value, ast.Name)
+                and tgt.value.id == "state"
+                and isinstance(tgt.slice, ast.Constant)
+                and str(tgt.slice.value).startswith("position")
+            ):
+                keys.append(tgt.slice.value)
+    return keys
+
+
+@pytest.mark.parametrize("filename", ["v5.py", "v6.py"])
+def test_observe_prims_names_the_frame_it_reports(filename):
+    """step(observe_prims=) reported a bare `position` while get_prim_info refused to.
+
+    get_prim_info deliberately has no unqualified `position`, so a caller must
+    choose a frame (#39). observe_prims then handed back exactly that
+    unqualified name — so the two tools taught opposite contracts, and the one
+    an agent uses most to measure motion was the unqualified one. The value is
+    world in every branch, so the field is named for it.
+    """
+    src = _adapter_src(filename, "step")
+
+    keys = _state_position_keys(src)
+
+    assert keys, f"{filename}: step must report an observed position"
+    assert "position" not in keys, (
+        f"{filename}: step reports a bare 'position' — the unqualified name #39 removed from get_prim_info"
+    )
+    assert set(keys) == {"position_world"}, f"{filename}: unexpected position keys {sorted(set(keys))}"
+
+
 @pytest.mark.parametrize("filename", ["v5.py", "v6.py"])
 def test_observe_prims_does_not_read_the_retired_position_key(filename):
     """`transform.get("position", [0, 0, 0])` would now silently report the origin.

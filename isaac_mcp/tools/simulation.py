@@ -74,27 +74,18 @@ def register_tools(mcp: FastMCP, get_connection: "Callable[[], IsaacConnection]"
     ) -> str:
         """Advance the simulation by exactly N physics frames on a FROZEN timeline.
 
-        step is self-contained: it initialises physics on first call and operates
-        on a paused/stopped timeline, so N is always exact and observations
-        correlate to a known frame count.
+        Initialises physics on first call and operates on a paused/stopped timeline,
+        so N is exact and observations correlate to a known frame count.
 
-        Do NOT call play_simulation before or during the debug loop; step is for
-        a frozen timeline. If the timeline is already playing, step returns an
-        error (a free run cannot be counted frame-by-frame). Use play_simulation
-        ONLY for a final continuous run / ScriptNode-driven demo, never for
-        debugging.
-
-        Typical debug loop (no play):
-          1. set_joint_positions to command the robot
-          2. step_simulation with observe_prims and observe_joints
-          3. get_joint_config if drives are not tracking correctly
-          4. get_physics_state if objects are not behaving as expected
-          5. Adjust and repeat
+        Do NOT call play_simulation before or during the debug loop — step is for a
+        frozen timeline and errors if the timeline is already playing. play is only
+        for a final continuous run / ScriptNode demo.
 
         Args:
             num_steps: Number of simulation frames to step.
-            observe_prims: List of prim paths to observe (returns position + velocity).
-            observe_joints: List of articulation prim paths to observe (returns joint positions).
+            observe_prims: Prim paths to observe. Each returns position_world — the
+                frame is named, as in get_prim_info — plus linear/angular velocity.
+            observe_joints: Articulation prim paths to observe (returns joint positions).
         """
         try:
             conn = get_connection()
@@ -223,23 +214,17 @@ def register_tools(mcp: FastMCP, get_connection: "Callable[[], IsaacConnection]"
     def execute_script(code: str, cwd: Optional[str] = None) -> str:
         """Escape hatch: execute arbitrary Python code in Isaac Sim.
 
-        PREFER named tools over this for: reading/setting joints (set_joint_positions,
-        get_joint_positions), inspecting state (get_prim_info, get_physics_state,
-        get_joint_config), stepping simulation (step_simulation), and checking logs
-        (get_isaac_logs).
-
-        USE this for: operations no named tool covers, such as creating Action Graphs,
-        computing IK, setting up physics callbacks, or configuring advanced USD properties.
+        PREFER a named tool wherever one exists — joints, prim / physics / joint
+        state, stepping, logs. USE this for what none covers: Action Graphs, IK,
+        physics callbacks, advanced USD properties.
 
         CAUTION: touching an articulation controlled by a running ScriptNode /
-        Action Graph can silently break its control path (no error is raised).
-        While a graph is running, read-only diagnostics (get_prim_info,
-        get_physics_state, get_joint_positions, get_isaac_logs) are safe, but
-        stop_simulation before using execute_script or named write tools on the
-        same articulation.
+        Action Graph silently breaks its control path (no error is raised).
+        Read-only diagnostics stay safe while a graph runs; stop_simulation before
+        any write to the same articulation.
 
         For persistent controllers (>20 lines), write a .py file and load it with
-        reload_script instead of pasting code here.
+        reload_script instead.
 
         Args:
             code: Python code to execute in the Isaac Sim context.
@@ -265,26 +250,16 @@ def register_tools(mcp: FastMCP, get_connection: "Callable[[], IsaacConnection]"
 
         Two modes, chosen automatically:
         - If any Action-Graph ScriptNode references this file (inputs:scriptPath),
-          those ScriptNodes are force-recompiled so your on-disk edits take effect
-          on the running graph. This is how you iterate on a ScriptNode controller.
-        - Otherwise the file is (re-)executed as a standalone controller, the way
-          you would use execute_script for code longer than ~20 lines.
-
-        Workflow:
-          1. Write the controller as a .py file (attach via create_action_graph
-             script_file=... for ScriptNode use)
-          2. reload_script to load / recompile it
-          3. step_simulation to debug (frozen timeline) or play for a ScriptNode demo
-          4. Edit the file and reload_script again to iterate
+          those ScriptNodes are force-recompiled so on-disk edits take effect on the
+          running graph. This is how you iterate on a ScriptNode controller.
+        - Otherwise the file is (re-)executed as a standalone controller.
 
         The file's directory is auto-added to sys.path.
 
         Args:
             file_path: Path to the Python file on disk.
-            script_file: Alias for file_path. create_action_graph names this
-                argument script_file, and an unknown argument is dropped
-                silently rather than rejected, so both spellings are accepted
-                here instead of one of them quietly doing nothing.
+            script_file: Alias for file_path — create_action_graph spells it that
+                way, and both are accepted so neither spelling quietly does nothing.
             module_name: Optional module name to reload (e.g. 'my_controller').
         """
         try:

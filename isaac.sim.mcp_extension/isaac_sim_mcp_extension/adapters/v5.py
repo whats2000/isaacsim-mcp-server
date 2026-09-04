@@ -1306,15 +1306,15 @@ class IsaacAdapterV5(IsaacAdapterBase):
                         rb_data = physx.get_rigidbody_transformation(path)
                         if rb_data and rb_data.get("ret_val", False):
                             pos = rb_data["position"]
-                            state["position"] = [float(pos[0]), float(pos[1]), float(pos[2])]
+                            state["position_world"] = [float(pos[0]), float(pos[1]), float(pos[2])]
                         else:
                             transform = self.get_prim_transform(path)
-                            state["position"] = transform.get("position_world") or transform.get(
+                            state["position_world"] = transform.get("position_world") or transform.get(
                                 "position_local", [0, 0, 0]
                             )
                     except Exception:
                         transform = self.get_prim_transform(path)
-                        state["position"] = transform.get("position_world") or transform.get(
+                        state["position_world"] = transform.get("position_world") or transform.get(
                             "position_local", [0, 0, 0]
                         )
                 else:
@@ -1324,7 +1324,9 @@ class IsaacAdapterV5(IsaacAdapterBase):
                     # to the parent-relative one silently changed the frame of
                     # this field depending on whether the physics read
                     # succeeded -- in the field most used to measure motion.
-                    state["position"] = transform.get("position_world") or transform.get("position_local", [0, 0, 0])
+                    state["position_world"] = transform.get("position_world") or transform.get(
+                        "position_local", [0, 0, 0]
+                    )
                 # Add velocity if rigid body
                 if prim.HasAPI(UsdPhysics.RigidBodyAPI):
                     try:

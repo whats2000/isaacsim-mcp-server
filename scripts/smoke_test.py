@@ -201,8 +201,8 @@ def main() -> int:
         if "prim_states" not in r:
             return False, "no prim_states in step response"
         states = r["prim_states"]
-        if not states or "position" not in states[0]:
-            return False, "no position observed for cube"
+        if not states or "position_world" not in states[0]:
+            return False, "no position_world observed for cube"
         return True, ""
 
     results.append(check("simulation.step with observe_prims (physics view read)", resp, _stepped))
@@ -270,9 +270,9 @@ def main() -> int:
 
     def _fell(r: Dict[str, Any]) -> tuple[bool, str]:
         states = r.get("prim_states") or []
-        if not states or "position" not in states[0]:
-            return False, "no position observed for cube"
-        z = states[0]["position"][2]
+        if not states or "position_world" not in states[0]:
+            return False, "no position_world observed for cube"
+        z = states[0]["position_world"][2]
         if z >= spawn_z:
             return False, f"cube did not fall: z={z}"
         return True, ""

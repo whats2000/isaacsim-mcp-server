@@ -46,46 +46,28 @@ def register_tools(mcp: FastMCP, get_connection: "Callable[[], IsaacConnection]"
     ) -> str:
         """Create and wire an OmniGraph Action Graph.
 
-        Builds a complete Action Graph with nodes, connections and attribute values
-        using og.Controller.edit(). This is the programmatic equivalent of creating
-        an Action Graph in the visual editor.
-
         Args:
             graph_path: USD prim path for the graph (default "/World/ActionGraph").
-            nodes: List of node definitions. Each dict has:
-                - "path": Node path relative to graph (e.g. "OnPlaybackTick")
-                - "type": OmniGraph node type (e.g. "omni.graph.action.OnPlaybackTick")
-            connections: List of [source_attr, target_attr] pairs for wiring nodes.
-                Each attr is "NodePath.outputs:attrName" or "NodePath.inputs:attrName".
-            values: List of attribute value overrides. Each dict has:
-                - "attr": Full attribute path (e.g. "ScriptNode.inputs:script")
-                - "value": The value to set
-            evaluator: Graph evaluator type (default "execution", what Action
-                Graphs use). "push" evaluates every application update regardless
-                of the timeline, so an OnPlaybackTick-driven ScriptNode would keep
-                running even while the simulation is stopped.
-            script_file: Convenience shortcut — path to a local Python script file.
-                When provided, automatically creates OnPlaybackTick → ScriptNode nodes,
-                wires them, and attaches the script file (sets usePath + scriptPath).
-                The nodes and connections parameters are ignored when script_file is set.
-                RECOMMENDED for anything you will iterate on — edit the file and
-                reload_script "just works", with the better reload story.
-            inline_script: Convenience shortcut — inline Python (must define
-                setup(db)/compute(db)). Auto-creates OnPlaybackTick → ScriptNode,
-                wires them, and sets the script inline (usePath=False). For small,
-                static graphs. For anything you will iterate on, prefer
-                script_file — it has the better reload story (edit the file +
-                reload_script "just works"; inline edits need edit_action_graph).
+            nodes: [{"path": <path relative to graph>, "type": <node type>}],
+                e.g. {"path": "OnPlaybackTick", "type": "omni.graph.action.OnPlaybackTick"}.
+            connections: [source_attr, target_attr] pairs, each written
+                "NodePath.outputs:attrName" or "NodePath.inputs:attrName".
+            values: [{"attr": "ScriptNode.inputs:script", "value": ...}] overrides.
+            evaluator: Graph evaluator (default "execution", what Action Graphs
+                use). "push" evaluates every app update regardless of the
+                timeline, so an OnPlaybackTick ScriptNode keeps running while
+                the simulation is stopped.
+            script_file: Path to a local Python script. Auto-creates and wires
+                OnPlaybackTick → ScriptNode and attaches the file; `nodes` and
+                `connections` are ignored. Recommended for anything you will
+                iterate on — edit the file, then reload_script.
+            inline_script: Inline Python instead of a file (must define
+                setup(db)/compute(db)). Same auto-wiring. For small static
+                graphs only: editing it needs edit_action_graph, not
+                reload_script.
 
-        Example (inline script — one-step):
-            create_action_graph(
-                inline_script="def setup(db): pass\\ndef compute(db): return True"
-            )
-
-        Example (script file — one-step, recommended for iteration):
-            create_action_graph(
-                script_file="/path/to/controller.py"
-            )
+        Example (recommended for iteration):
+            create_action_graph(script_file="/path/to/controller.py")
         """
         try:
             conn = get_connection()
@@ -112,28 +94,21 @@ def register_tools(mcp: FastMCP, get_connection: "Callable[[], IsaacConnection]"
         values: Optional[List[Dict[str, object]]] = None,
         connections: Optional[List[List[str]]] = None,
     ) -> str:
-        """Edit an existing OmniGraph Action Graph: set attribute values or add connections.
+        """Edit an existing Action Graph: set attribute values or add connections.
 
-        Use this to update ScriptNode scripts (inline or file path), change attribute
-        values, or add new connections on an already-created graph.
+        Use this to update a ScriptNode's script (inline or file path), change
+        attribute values, or add connections on an already-created graph.
 
-        For ScriptNode with a local file script, set both usePath and scriptPath:
+        For a ScriptNode backed by a file, set usePath alongside the path:
             values=[
-                {"attr": "ScriptNode.inputs:usePath", "value": true},
+                {"attr": "ScriptNode.inputs:usePath",    "value": true},
                 {"attr": "ScriptNode.inputs:scriptPath", "value": "/path/to/script.py"}
             ]
-
-        For ScriptNode with inline script:
-            values=[
-                {"attr": "ScriptNode.inputs:usePath", "value": false},
-                {"attr": "ScriptNode.inputs:script", "value": "def compute(db): ..."}
-            ]
+        For an inline script, set usePath false and write "inputs:script" instead.
 
         Args:
             graph_path: USD prim path of the existing graph (default "/World/ActionGraph").
-            values: List of attribute value overrides. Each dict has:
-                - "attr": Attribute path relative to graph (e.g. "ScriptNode.inputs:script")
-                - "value": The value to set
+            values: Attribute overrides — {"attr": "<Node>.inputs:<name>", "value": ...}.
             connections: List of [source_attr, target_attr] pairs to add.
         """
         try:
