@@ -17,12 +17,18 @@ declare -A ENGINE_LAUNCHERS=(
 
 ISAAC_DEFAULT_ENGINE="physx"
 
+# Browser live view (scripts/live_view.py), started inside Kit via --exec.
+ISAAC_LIVE_VIEW_SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/live_view.py"
+
 # isaac_resolve_launcher <isaacsim_root> [args...]
 #
 # Selection order (later wins):
 #   1. ISAAC_DEFAULT_ENGINE
 #   2. $ISAACSIM_ENGINE
 #   3. --engine <name> / --engine=<name> / --<name> on the command line
+#
+# --live-view (or ISAAC_LIVE_VIEW=1) is consumed here too and becomes
+# `--exec scripts/live_view.py` for Kit, so every launcher gets the browser view.
 #
 # On success sets:
 #   ISAACSIM_ENGINE        resolved engine name
@@ -34,6 +40,7 @@ isaac_resolve_launcher() {
   local root="$1"
   shift
   local engine="${ISAACSIM_ENGINE:-$ISAAC_DEFAULT_ENGINE}"
+  local live_view="${ISAAC_LIVE_VIEW:-0}"
 
   ISAAC_PASSTHRU_ARGS=()
   while [[ $# -gt 0 ]]; do
@@ -44,6 +51,10 @@ isaac_resolve_launcher() {
         ;;
       --engine=*)
         engine="${1#*=}"
+        shift
+        ;;
+      --live-view)
+        live_view=1
         shift
         ;;
       --*)
@@ -68,6 +79,10 @@ isaac_resolve_launcher() {
     echo "Error: unknown physics engine '$engine'." >&2
     echo "Known engines: ${!ENGINE_LAUNCHERS[*]}" >&2
     return 1
+  fi
+
+  if [[ "$live_view" == "1" ]]; then
+    ISAAC_PASSTHRU_ARGS+=(--exec "$ISAAC_LIVE_VIEW_SCRIPT")
   fi
 
   ISAACSIM_ENGINE="$engine"

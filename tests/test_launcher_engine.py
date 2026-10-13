@@ -139,3 +139,24 @@ def test_missing_install_root_is_rejected(tmp_path):
     rc, _, err = _resolve(str(tmp_path / "nonexistent"))
     assert rc == 1
     assert "ISAACSIM_ROOT" in err
+
+
+def test_live_view_flag_becomes_kit_exec(full_install):
+    """--live-view is consumed and turned into `--exec scripts/live_view.py` for Kit."""
+    live_view = os.path.join(REPO_ROOT, "scripts", "live_view.py")
+    rc, out, _ = _resolve(full_install, "--live-view", "--no-window")
+    assert rc == 0
+    assert out["ENGINE"] == "physx"
+    assert out["ARGS"] == f"--no-window --exec {live_view}"
+
+
+def test_live_view_selected_by_env(full_install):
+    live_view = os.path.join(REPO_ROOT, "scripts", "live_view.py")
+    rc, out, _ = _resolve(full_install, "--newton", env={"ISAAC_LIVE_VIEW": "1"})
+    assert rc == 0
+    assert out["LAUNCHER"] == "isaac-sim.newton.sh"
+    assert out["ARGS"] == f"--exec {live_view}"
+
+
+def test_live_view_script_exists():
+    assert os.path.isfile(os.path.join(REPO_ROOT, "scripts", "live_view.py"))
