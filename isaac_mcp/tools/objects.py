@@ -47,31 +47,25 @@ def register_tools(mcp: FastMCP, get_connection: "Callable[[], IsaacConnection]"
     ) -> str:
         """Create a primitive object (Cube, Sphere, Cylinder, Cone, Capsule, Plane).
 
-        Prefer `size` for absolute sizing: `size` is the target in METERS
-        (default 1.0), so `size=0.3` gives a 0.3 m object regardless of type.
+        Prefer `size`, which is absolute METERS: `size=0.3` gives a 0.3 m object
+        of any type. `scale` is a RAW MULTIPLIER of the primitive's native size
+        (2 m for Cube/Sphere/Cylinder/Cone/Capsule, 1 m for Plane), so
+        `scale=0.5` on a Cube gives 1 m, not 0.5 m. Use `scale` only for
+        deliberate non-uniform shaping; if both are given, `scale` wins.
 
-        `scale` is a RAW MULTIPLIER of the primitive's NATIVE size, not meters.
-        Native sizes: Cube/Sphere/Cylinder/Cone/Capsule = 2 m, Plane = 1 m.
-        So `scale=0.5` on a Cube -> 1 m, and `scale=[0.4,0.4,0.3]` -> a
-        0.8 x 0.8 x 0.6 m box (0.4 * 2 m), which surprises callers who expect
-        0.4 m. Use `scale` only for deliberate non-uniform shaping; otherwise
-        use `size`. If both are given, `scale` wins and `size` is ignored.
-
-        For the geometric prims (Cube, Sphere, Cylinder, Cone, Capsule) this
-        returns prim_path, actual_size [x, y, z] in meters, and bounding_box
-        (min/max corners in world coordinates) so you can accurately place
-        other objects relative to this one. A Plane has no such extent and
-        returns prim_path only.
+        Returns prim_path, plus — for the geometric prims — actual_size
+        [x, y, z] in meters and bounding_box (world-space min/max corners) for
+        placing other objects relative to this one. A Plane returns prim_path
+        only.
 
         Args:
             object_type: Type of primitive — Cube, Sphere, Cylinder, Cone, Capsule, or Plane
                 (case-insensitive; "cube" is normalized to "Cube").
             position: [x, y, z] world position.
             rotation: [rx, ry, rz] rotation in degrees.
-            scale: [sx, sy, sz] RAW multiplier of the native size (2 m for most
-                prims, 1 m for Plane). NOT meters. Overrides `size`.
-            size: Target size in METERS (default 1.0). Absolute; independent of
-                the primitive's native size. Ignored if `scale` is provided.
+            scale: [sx, sy, sz] RAW multiplier of the native size. NOT meters.
+                Overrides `size`.
+            size: Target size in METERS (default 1.0).
             color: [r, g, b] color values (0-1).
             physics_enabled: Enable physics on this object.
             prim_path: Custom prim path. Auto-generated if not provided.

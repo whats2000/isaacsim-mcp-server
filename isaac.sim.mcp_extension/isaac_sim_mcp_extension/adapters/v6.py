@@ -1863,15 +1863,15 @@ class IsaacAdapterV6(IsaacAdapterBase):
                             arr = transforms.numpy() if hasattr(transforms, "numpy") else np.asarray(transforms)
                             if arr.size >= 3:
                                 flat = arr.reshape(-1)
-                                state["position"] = [float(flat[0]), float(flat[1]), float(flat[2])]
+                                state["position_world"] = [float(flat[0]), float(flat[1]), float(flat[2])]
                         else:
                             transform = self.get_prim_transform(path)
-                            state["position"] = transform.get("position_world") or transform.get(
+                            state["position_world"] = transform.get("position_world") or transform.get(
                                 "position_local", [0, 0, 0]
                             )
                     except Exception:
                         transform = self.get_prim_transform(path)
-                        state["position"] = transform.get("position_world") or transform.get(
+                        state["position_world"] = transform.get("position_world") or transform.get(
                             "position_local", [0, 0, 0]
                         )
                 else:
@@ -1881,7 +1881,9 @@ class IsaacAdapterV6(IsaacAdapterBase):
                     # to the parent-relative one silently changed the frame of
                     # this field depending on whether the physics read
                     # succeeded -- in the field most used to measure motion.
-                    state["position"] = transform.get("position_world") or transform.get("position_local", [0, 0, 0])
+                    state["position_world"] = transform.get("position_world") or transform.get(
+                        "position_local", [0, 0, 0]
+                    )
                 if prim.HasAPI(UsdPhysics.RigidBodyAPI):
                     try:
                         ps = self.get_physics_state(path)
