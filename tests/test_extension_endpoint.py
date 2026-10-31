@@ -32,7 +32,15 @@ smoke test on the default port cannot catch. These lock the resolution order.
 from __future__ import annotations
 
 import pytest
-from isaac_sim_mcp_extension.extension import _env_int, _resolve_endpoint
+from isaac_sim_mcp_extension import live_view
+from isaac_sim_mcp_extension.extension import (
+    MCPExtension,
+    _env_int,
+    _live_view_enabled,
+    _resolve_endpoint,
+    _resolve_live_view_endpoint,
+    _start_live_view,
+)
 
 # Setting paths, named so the ordering assertions below read clearly.
 LEGACY_PORT = "/exts/isaac.sim.mcp/server.port"
@@ -40,6 +48,9 @@ LEGACY_HOST = "/exts/isaac.sim.mcp/server.host"
 MANIFEST_PORT = "/exts/isaac.sim.mcp_extension/server.port"
 MANIFEST_SOCKET = "/exts/isaac.sim.mcp_extension/server.socket"
 MANIFEST_HOST = "/exts/isaac.sim.mcp_extension/server.host"
+LIVE_VIEW_ENABLED = "/exts/isaac.sim.mcp_extension/live_view/enabled"
+LIVE_VIEW_PORT = "/exts/isaac.sim.mcp_extension/live_view/port"
+LIVE_VIEW_HOST = "/exts/isaac.sim.mcp_extension/live_view/host"
 
 
 class FakeSettings:
@@ -57,6 +68,9 @@ def _clear_endpoint_env(monkeypatch):
     """Keep the ambient environment from leaking into the resolution tests."""
     monkeypatch.delenv("ISAAC_MCP_PORT", raising=False)
     monkeypatch.delenv("ISAAC_MCP_HOST", raising=False)
+    monkeypatch.delenv("ISAAC_LIVE_VIEW", raising=False)
+    monkeypatch.delenv("ISAAC_LIVE_VIEW_PORT", raising=False)
+    monkeypatch.delenv("ISAAC_LIVE_VIEW_HOST", raising=False)
 
 
 def test_env_int_reads_valid_value(monkeypatch):
@@ -129,3 +143,76 @@ def test_manifest_wins_over_env():
     settings = FakeSettings({MANIFEST_SOCKET: 9000, MANIFEST_HOST: "manifest-host"})
     host, port = _resolve_endpoint(settings)
     assert (host, port) == ("manifest-host", 9000)
+
+
+# ── Live view ──────────────────────────────────────────────────────────────────
+
+
+@pytest.mark.parametrize(
+    "settings, env, expected",
+    [
+        ({}, None, False),
+        ({}, "0", False),
+        ({}, "false", False),
+        ({}, "", False),
+        ({}, "1", True),
+        ({}, "true", True),
+        ({LIVE_VIEW_ENABLED: True}, None, True),
+        ({LIVE_VIEW_ENABLED: True}, "0", True),
+    ],
+)
+def test_live_view_is_opt_in(monkeypatch, settings, env, expected):
+    if env is not None:
+        monkeypatch.setenv("ISAAC_LIVE_VIEW", env)
+    assert _live_view_enabled(FakeSettings(settings)) is expected
+
+
+def test_live_view_default_endpoint_is_localhost_18200():
+    assert _resolve_live_view_endpoint(FakeSettings(), 8766) == ("127.0.0.1", 18200)
+
+
+def test_second_instance_gets_its_own_live_view_port():
+    """A fixed port made the second instance's live view fail to bind."""
+    assert _resolve_live_view_endpoint(FakeSettings(), 8767) == ("127.0.0.1", 18201)
+
+
+def test_live_view_port_precedence(monkeypatch):
+    monkeypatch.setenv("ISAAC_LIVE_VIEW_PORT", "18300")
+    assert _resolve_live_view_endpoint(FakeSettings(), 8766)[1] == 18300
+    assert _resolve_live_view_endpoint(FakeSettings({LIVE_VIEW_PORT: 18400}), 8766)[1] == 18400
+
+
+def test_live_view_host_precedence(monkeypatch):
+    monkeypatch.setenv("ISAAC_LIVE_VIEW_HOST", "0.0.0.0")
+    assert _resolve_live_view_endpoint(FakeSettings(), 8766)[0] == "0.0.0.0"
+    assert _resolve_live_view_endpoint(FakeSettings({LIVE_VIEW_HOST: "10.0.0.5"}), 8766)[0] == "10.0.0.5"
+
+
+def test_live_view_stays_off_unless_opted_in(monkeypatch):
+    def fail(*_args, **_kwargs):
+        raise AssertionError("live view started without opt-in")
+
+    monkeypatch.setattr(live_view, "start", fail)
+    _start_live_view(FakeSettings(), 8766)
+
+
+def test_live_view_bind_failure_is_reported_and_does_not_stop_startup(monkeypatch):
+    """The MCP socket must still come up when only the live view cannot start."""
+    errors = []
+    monkeypatch.setattr("carb.log_error", errors.append)
+
+    def taken(_port, _host):
+        raise OSError(98, "Address already in use")
+
+    monkeypatch.setattr(live_view, "start", taken)
+    _start_live_view(FakeSettings({LIVE_VIEW_ENABLED: True}), 8766)
+    assert len(errors) == 1
+    assert "18200" in errors[0]
+    assert "ISAAC_LIVE_VIEW_PORT" in errors[0]
+
+
+def test_extension_shutdown_stops_the_live_view(monkeypatch):
+    stops = []
+    monkeypatch.setattr(live_view, "stop", lambda: stops.append(1))
+    MCPExtension().on_shutdown()
+    assert stops == [1]

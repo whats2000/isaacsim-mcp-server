@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **`set_drive_params` writes a joint drive's gains** in the units `get_joint_config` reports, converting to USD's per-degree storage. Before it, `execute_script` was the only write path, and writing a reported gain raw made the drive 57.3x stiffer with no error. On Newton the running solver keeps its old gain, and the response says so.
+- **Browser live view for headless Isaac Sim** — `--live-view` on `run_isaac_sim.sh` / `run_isaac_sim.ps1` (or `ISAAC_LIVE_VIEW=1`) serves the scene camera as MJPEG on `127.0.0.1:18200`, playing or stopped. The port follows the MCP port, or set `ISAAC_LIVE_VIEW_PORT`. On a machine with no monitor there was no way to watch what a prompt did short of `capture_image` stills.
 
 ### Changed
 - **`get_joint_config` reports an angular drive's `stiffness` and `damping` per radian, not per degree.** USD stores angular gains per degree and the engine consumes them per radian, so the number returned was 57.3× off from the one the simulation ran — in the same payload whose limits and positions were already radians. Each joint now carries `gain_units`.

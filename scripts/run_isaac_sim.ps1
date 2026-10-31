@@ -31,6 +31,7 @@
 .PARAMETER ExtraArgs
     Any remaining arguments are forwarded verbatim to the launcher. Engine
     selectors (--physx / --newton / --engine) are consumed here, not forwarded.
+    --live-view turns on the browser live view (or set $env:ISAAC_LIVE_VIEW=1).
 
 .EXAMPLE
     .\run_isaac_sim.ps1
@@ -94,6 +95,9 @@ if ($ExtraArgs) {
             $selectedEngine = $ExtraArgs[$i + 1]; $i++
         } elseif ($arg -like '--engine=*') {
             $selectedEngine = $arg.Split('=', 2)[1]
+        } elseif ($arg -eq '--live-view') {
+            # The Kit setting the extension reads. Mirrors scripts/lib/isaac_launcher.sh.
+            $passthru += '--/exts/isaac.sim.mcp_extension/live_view/enabled=true'
         } elseif ($arg -like '--*' -and $engineLaunchers.ContainsKey($arg.Substring(2))) {
             # --physx / --newton are engine selectors; every other flag is Kit's.
             $selectedEngine = $arg.Substring(2)

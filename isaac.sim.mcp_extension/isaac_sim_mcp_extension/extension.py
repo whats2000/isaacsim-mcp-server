@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import gc
 import os
+import sys
 import traceback
 from typing import Any, Dict, Optional
 
@@ -40,6 +41,10 @@ import omni.usd
 from .adapters import get_adapter
 from .handlers import register_all_handlers
 from .socket_server import SocketServer
+
+# Under the extension's own settings root, which Kit also uses for the manifest.
+_LIVE_VIEW_SETTINGS = "/exts/isaac.sim.mcp_extension/live_view"
+_LIVE_VIEW_PORT_OFFSET = 9434  # the default MCP port 8766 serves the live view on 18200
 
 
 def _env_int(name: str) -> Optional[int]:
@@ -78,6 +83,41 @@ def _resolve_endpoint(settings: Any) -> tuple[str, int]:
         or "localhost"
     )
     return host, port
+
+
+def _live_view_enabled(settings: Any) -> bool:
+    """The live view is opt-in: --live-view (a Kit setting) or ISAAC_LIVE_VIEW=1."""
+    if settings.get(f"{_LIVE_VIEW_SETTINGS}/enabled"):
+        return True
+    return os.environ.get("ISAAC_LIVE_VIEW", "").lower() in ("1", "true")
+
+
+def _resolve_live_view_endpoint(settings: Any, mcp_port: int) -> tuple[str, int]:
+    """Resolve the live view (host, port). First hit wins, as in _resolve_endpoint.
+
+    The default port follows the MCP port, so instances that launch_isaac_sim_mcp.sh
+    auto-assigns different MCP ports do not fight over one live view port.
+    """
+    port = (
+        settings.get(f"{_LIVE_VIEW_SETTINGS}/port")
+        or _env_int("ISAAC_LIVE_VIEW_PORT")
+        or mcp_port + _LIVE_VIEW_PORT_OFFSET
+    )
+    host = settings.get(f"{_LIVE_VIEW_SETTINGS}/host") or os.environ.get("ISAAC_LIVE_VIEW_HOST") or "127.0.0.1"
+    return host, port
+
+
+def _start_live_view(settings: Any, mcp_port: int) -> None:
+    """Start the live view if opted in. A failure here must not cost the MCP socket."""
+    if not _live_view_enabled(settings):
+        return
+    host, port = _resolve_live_view_endpoint(settings, mcp_port)
+    try:
+        from . import live_view
+
+        live_view.start(port, host)
+    except Exception as e:
+        carb.log_error(f"[live_view] could not start on {host}:{port}: {e}. Set ISAAC_LIVE_VIEW_PORT to another port.")
 
 
 class MCPExtension(omni.ext.IExt):
@@ -121,9 +161,14 @@ class MCPExtension(omni.ext.IExt):
 
         self._server = SocketServer(host, port, self._execute_command)
         self._server.start()
+        _start_live_view(self._settings, port)
 
     def on_shutdown(self) -> None:
         print("trigger  on_shutdown for: ", self.ext_id)
+        # Only imported when it was used, so a run that never opted in loads none of it.
+        live_view = sys.modules.get(f"{__package__}.live_view")
+        if live_view:
+            live_view.stop()
         if self._server:
             self._server.stop()
         self._play_sub = None

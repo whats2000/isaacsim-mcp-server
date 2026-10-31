@@ -24,6 +24,9 @@ ISAAC_DEFAULT_ENGINE="physx"
 #   2. $ISAACSIM_ENGINE
 #   3. --engine <name> / --engine=<name> / --<name> on the command line
 #
+# --live-view is consumed here too and becomes the Kit setting the extension reads,
+# so every launcher gets the browser view. ISAAC_LIVE_VIEW=1 reaches it directly.
+#
 # On success sets:
 #   ISAACSIM_ENGINE        resolved engine name
 #   ISAAC_SIM_SH           absolute path to the launcher to exec
@@ -44,6 +47,10 @@ isaac_resolve_launcher() {
         ;;
       --engine=*)
         engine="${1#*=}"
+        shift
+        ;;
+      --live-view)
+        ISAAC_PASSTHRU_ARGS+=(--/exts/isaac.sim.mcp_extension/live_view/enabled=true)
         shift
         ;;
       --*)

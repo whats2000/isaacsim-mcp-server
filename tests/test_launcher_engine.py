@@ -139,3 +139,37 @@ def test_missing_install_root_is_rejected(tmp_path):
     rc, _, err = _resolve(str(tmp_path / "nonexistent"))
     assert rc == 1
     assert "ISAACSIM_ROOT" in err
+
+
+LIVE_VIEW_SETTING = "--/exts/isaac.sim.mcp_extension/live_view/enabled=true"
+
+
+def test_live_view_flag_becomes_a_kit_setting(full_install):
+    rc, out, _ = _resolve(full_install, "--live-view", "--no-window")
+    assert rc == 0
+    assert out["ENGINE"] == "physx"
+    assert out["ARGS"] == f"{LIVE_VIEW_SETTING} --no-window"
+
+
+def test_live_view_flag_works_from_a_path_with_a_space(tmp_path):
+    """`--exec <path>` was split at the space by Kit, so the view never started."""
+    spaced = tmp_path / "with space"
+    spaced.mkdir()
+    rc, out, _ = _resolve(_fake_install(spaced, ["isaac-sim.sh"]), "--live-view")
+    assert rc == 0
+    assert out["ARGS"] == LIVE_VIEW_SETTING
+
+
+def test_live_view_env_is_left_for_the_extension_to_read(full_install):
+    rc, out, _ = _resolve(full_install, "--newton", env={"ISAAC_LIVE_VIEW": "1"})
+    assert rc == 0
+    assert out["LAUNCHER"] == "isaac-sim.newton.sh"
+    assert out["ARGS"] == ""
+
+
+def test_windows_launcher_passes_the_same_live_view_setting():
+    # No PowerShell in the unit suite; a typo here would silently disable the flag.
+    with open(os.path.join(REPO_ROOT, "scripts", "run_isaac_sim.ps1"), encoding="utf-8") as f:
+        source = f.read()
+    assert "'--live-view'" in source
+    assert f"'{LIVE_VIEW_SETTING}'" in source

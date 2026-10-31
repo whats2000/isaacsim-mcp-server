@@ -28,6 +28,8 @@ keywords = ["mcp", "server", "socket", "simulation", "robotics"]
 "isaacsim.core.utils" = { optional = true }
 "isaacsim.sensors.camera" = { optional = true }
 "isaacsim.sensors.rtx" = { optional = true }
+# Browser live view (live_view.py), imported only when it is opted in to.
+"omni.replicator.core" = { optional = true }
 "isaacsim.asset.importer.urdf" = {}
 "omni.kit.uiapp" = {}
 "isaacsim.gui.components" = {}

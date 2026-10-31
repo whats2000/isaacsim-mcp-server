@@ -115,6 +115,7 @@ import isaac_sim_mcp_extension.handlers.materials as materials_mod
 import isaac_sim_mcp_extension.handlers.lighting as lighting_mod
 import isaac_sim_mcp_extension.handlers.graphs as graphs_mod
 import isaac_sim_mcp_extension.handlers as handlers_init
+import isaac_sim_mcp_extension.live_view as live_view_mod
 
 # Reload adapter layer first, then handlers, then __init__ modules
 importlib.reload(version_mod)
@@ -140,6 +141,9 @@ importlib.reload(materials_mod)
 importlib.reload(lighting_mod)
 importlib.reload(graphs_mod)
 importlib.reload(handlers_init)
+# The running view is an instance of the old class, so restart it onto the new code.
+importlib.reload(live_view_mod)
+live_view_mod.restart()
 
 # Re-register all handlers with a fresh adapter
 from isaac_sim_mcp_extension.adapters import get_adapter
